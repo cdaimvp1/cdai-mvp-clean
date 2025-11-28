@@ -103,7 +103,9 @@ if (downloadLedgerBtn) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `cdai_immutable_ledger_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    a.download = `cdai_immutable_ledger_${new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -390,13 +392,12 @@ function timestamp() {
 
 function escapeHtml(text) {
   if (text === null || text === undefined) return "";
-  return String(text).replace(/[&<>"']/g, (c) =>
-    {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[c] || c
-  );
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  return String(text).replace(/[&<>"']/g, (c) => map[c] || c);
 }
