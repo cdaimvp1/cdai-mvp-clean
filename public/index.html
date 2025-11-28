@@ -2,12 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>cd\ai MVP – Governed Dual-Hemisphere Demo</title>
+    <title>cd\ai – Governed Dual-Hemisphere MVP</title>
+
+    <!-- Correct Render-friendly static path -->
     <link rel="stylesheet" href="/static/styles.css" />
+
+    <!-- Prevent caching issues on Render -->
+    <meta http-equiv="Cache-Control" content="no-store" />
   </head>
+
   <body>
     <div class="app-shell">
-      <!-- LEFT: main interaction area -->
+      <!-- LEFT SIDE -->
       <div class="pane-left">
         <header class="app-header">
           <div class="app-brand">
@@ -19,16 +25,22 @@
               </p>
             </div>
           </div>
-          <button id="logout-button" class="logout-button" title="End demo session">
+
+          <button id="logout-button" class="logout-button">
             Logout
           </button>
         </header>
 
+        <!-- Task Input -->
         <section class="card">
           <h2>Task Input</h2>
-          <textarea id="task-input" placeholder="Describe the task or content to generate..."></textarea>
+          <textarea
+            id="task-input"
+            placeholder="Describe the task or content to generate..."
+          ></textarea>
         </section>
 
+        <!-- Governance Rules -->
         <section class="card">
           <h2>Goal / Governance Rules (single field)</h2>
           <textarea
@@ -36,31 +48,33 @@
             placeholder="Example:
 – Make it concise
 – Maintain professional tone
-– Align with regulatory constraints
-– Avoid hallucinations"
+– Avoid prohibited concepts
+– Fit within word band"
           ></textarea>
         </section>
 
+        <!-- Run Button -->
         <section class="card card-actions">
           <button id="run-button">Run Governed Workflow</button>
           <span id="run-status" class="run-status"></span>
         </section>
 
+        <!-- Final Output -->
         <section class="card">
           <h2>Final Governed Output</h2>
-          <div id="final-output" class="output-box">
-            <!-- Updated only when both animation and workflow are done -->
-          </div>
+          <div id="final-output" class="output-box"></div>
         </section>
       </div>
 
-      <!-- RIGHT: telemetry & governance dashboard -->
+      <!-- RIGHT SIDE -->
       <div class="pane-right">
+        <!-- Governance Rules Panel -->
         <section class="card card-compact" id="governance-rules-panel">
           <h2>Governance Rules</h2>
           <ul id="rules-list"></ul>
         </section>
 
+        <!-- MCP Panel -->
         <section class="card card-compact" id="mcp-panel">
           <div class="mcp-header-row">
             <h2>MCP & Cycle</h2>
@@ -74,15 +88,16 @@
           </p>
         </section>
 
+        <!-- Hemispheric Flow -->
         <section class="card card-compact" id="flow-panel">
           <h2>Hemispheric Flow</h2>
+
           <div class="flow-visual">
             <div class="hemisphere-node hemisphere-a">
               <div class="label">Analytical</div>
               <div class="circle" id="node-a">A</div>
             </div>
 
-            <!-- Note: we removed explicit arrows per your earlier request -->
             <div class="flow-spacer"></div>
 
             <div class="hemisphere-node hemisphere-b">
@@ -97,12 +112,13 @@
               <div class="final-check" id="node-final">✔</div>
             </div>
           </div>
+
           <p class="flow-caption">
-            A ⇄ B → ✔ Final — animation illustrates governed convergence, while the hemispheres perform real passes in the background.
+            A ⇄ B → ✔ Final — animation illustrates governed convergence.
           </p>
         </section>
 
-        <!-- Analytical Hemisphere -->
+        <!-- Analytical -->
         <section class="card log-card" data-panel="analytical">
           <header class="log-header">
             <span>Analytical Hemisphere</span>
@@ -113,7 +129,7 @@
           <div class="log-content" id="analytical-log"></div>
         </section>
 
-        <!-- Creative Hemisphere -->
+        <!-- Creative -->
         <section class="card log-card" data-panel="creative">
           <header class="log-header">
             <span>Creative Hemisphere</span>
@@ -124,7 +140,7 @@
           <div class="log-content" id="creative-log"></div>
         </section>
 
-        <!-- Immutable Ledger -->
+        <!-- Ledger -->
         <section class="card log-card collapsed" data-panel="ledger">
           <header class="log-header">
             <span>Immutable Ledger</span>
@@ -135,11 +151,13 @@
               </button>
             </div>
           </header>
+
           <div class="log-content" id="ledger-log"></div>
         </section>
       </div>
     </div>
 
+    <!-- Socket & Main Script -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
   </body>
