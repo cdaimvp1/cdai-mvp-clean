@@ -1,86 +1,127 @@
-/* Page background */
+/* Full-page black background */
+html,
 body {
   margin: 0;
   padding: 0;
-  background: #000;
-  font-family: "Inter", sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #000000;
+  color: #ffffff;
 }
 
-/* Wrapper to vertically stack logo + card */
-.login-wrapper {
+/* Layout wrapper */
+.login-page {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  justify-content: center;
 }
 
-/* Logo */
-.login-logo {
-  width: 280px;          /* ✔ MUCH smaller */
-  max-width: 80%;
-  height: auto;
-  display: block;
-  opacity: 0.95;
-
-  /* Center it */
-  margin: 0 auto;
-}
-
-/* Login card */
+/* Card */
 .login-card {
-  background: #0f0f10;
-  padding: 32px;
-  border-radius: 12px;
-  width: 340px;
-  border: 1px solid #1e1e22;
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
-  text-align: center;
+  background: #060712;
+  border-radius: 24px;
+  padding: 32px 40px 28px;
+  width: 380px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+  text-align: left;
+  border: 1px solid #15162a;
 }
 
-/* Title */
-.login-card h1 {
+/* Logo — smaller & aligned with title size */
+.login-logo {
+  display: block;
+  margin: 0 auto 24px;
+  width: 140px; /* adjust if you want slightly larger/smaller */
+}
+
+/* Title & subtitle */
+.login-title {
+  text-align: center;
   font-size: 20px;
   font-weight: 600;
-  color: white;
-  margin-bottom: 10px;
+  margin: 0 0 8px;
 }
 
-/* Input */
-#password {
+.login-subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #a3a7c5;
+  margin: 0 0 24px;
+}
+
+/* Label */
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c6c8e4;
+  margin-bottom: 6px;
+}
+
+/* Password input */
+.password-input {
   width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  background: #111;
-  color: white;
-  margin-top: 10px;
+  padding: 11px 14px;
+  border-radius: 999px;
+  border: 2px solid #3b3f73;
+  background: #050617;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
   margin-bottom: 18px;
 }
 
-/* Login button */
-#login-btn {
+.password-input::placeholder {
+  color: #74789d;
+}
+
+.password-input:focus {
+  border-color: #8b6bff;
+  box-shadow: 0 0 0 1px rgba(139, 107, 255, 0.4);
+}
+
+/* Button */
+.login-button {
   width: 100%;
-  background: #855cff;
-  color: white;
+  border-radius: 999px;
   border: none;
-  padding: 10px;
-  border-radius: 6px;
+  padding: 11px;
   font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
   cursor: pointer;
-  transition: background 0.15s;
+  background-image: linear-gradient(90deg, #7c4dff, #c86bff);
+  box-shadow: 0 12px 25px rgba(124, 77, 255, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.12s ease,
+    filter 0.12s ease;
 }
 
-#login-btn:hover {
-  background: #9f75ff;
+.login-button:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 16px 35px rgba(124, 77, 255, 0.55);
+  transform: translateY(-1px);
 }
 
-/* Error message */
+.login-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 8px 18px rgba(124, 77, 255, 0.35);
+}
+
+/* Error text */
 .login-error {
-  color: #ff6565;
-  font-size: 14px;
-  margin-top: 8px;
+  margin-top: 10px;
+  min-height: 18px;
+  font-size: 13px;
+  color: #ff6b81;
+}
+
+/* Footer */
+.login-footer {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #7c7f9a;
+  text-align: center;
 }

@@ -2,56 +2,91 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>cd\ai – Login</title>
+    <title>cd\ai – Governed Demo Login</title>
 
-    <!-- Correct static path -->
+    <!-- Served from /static because of app.use("/static", express.static(...)) -->
     <link rel="stylesheet" href="/static/styles-login.css" />
-
     <meta http-equiv="Cache-Control" content="no-store" />
   </head>
 
   <body>
-    <div class="login-wrapper">
+    <div class="login-page">
       <div class="login-card">
-        <!-- Correct static asset path -->
-        <img src="/static/assets/logo-login.png" class="login-logo" alt="cd\ai" />
+        <!-- Logo (served from /assets) -->
+        <img
+          src="/assets/logo-login.png"
+          alt="cd\\ai"
+          class="login-logo"
+        />
 
-        <h1 class="login-title">cd\ai Demo Access</h1>
+        <h1 class="login-title">cd\ai Governed Demo</h1>
+        <p class="login-subtitle">
+          Private prototype. Access is limited to authorized reviewers.
+        </p>
+
+        <div class="field-label">Access Password</div>
 
         <input
           id="password"
           type="password"
+          class="password-input"
           placeholder="Enter password"
           autocomplete="off"
-          class="login-input"
         />
 
-        <button id="login-button" class="login-button">Login</button>
+        <button id="login-button" class="login-button">Enter</button>
 
         <p id="login-error" class="login-error"></p>
       </div>
+
+      <footer class="login-footer">
+        © 2025 Change Directories LLC · Confidential Demonstration
+      </footer>
     </div>
 
     <script>
-      // Login function — no caching, no stored state
-      document.getElementById("login-button").addEventListener("click", async () => {
-        const password = document.getElementById("password").value.trim();
+      async function doLogin() {
+        const passwordEl = document.getElementById("password");
         const errorEl = document.getElementById("login-error");
+        const password = passwordEl.value.trim();
 
         errorEl.textContent = "";
 
-        const res = await fetch("/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password })
-        });
-
-        if (res.ok) {
-          window.location.href = "/index.html";
-        } else {
-          errorEl.textContent = "Invalid password. Please try again.";
+        if (!password) {
+          errorEl.textContent = "Please enter the access password.";
+          return;
         }
-      });
+
+        try {
+          const res = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+
+          if (res.ok) {
+            // Server sets the session and redirects to the main app
+            window.location.href = "/";
+          } else {
+            errorEl.textContent = "Incorrect password. Please try again.";
+          }
+        } catch (err) {
+          console.error("Login error:", err);
+          errorEl.textContent = "Network error. Please try again.";
+        }
+      }
+
+      document
+        .getElementById("login-button")
+        .addEventListener("click", doLogin);
+
+      document
+        .getElementById("password")
+        .addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            doLogin();
+          }
+        });
     </script>
   </body>
 </html>
