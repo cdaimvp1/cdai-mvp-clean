@@ -4,40 +4,33 @@
     <meta charset="UTF-8" />
     <title>cd\ai – Login</title>
 
-    <!-- Correct Render-friendly path -->
     <link rel="stylesheet" href="/static/styles-login.css" />
-
     <meta http-equiv="Cache-Control" content="no-store" />
   </head>
 
   <body>
     <div class="login-wrapper">
       <div class="login-card">
-        <img
-          src="/assets/logo-login.png"
-          alt="cd\ai"
-          class="login-logo"
-        />
+        <img src="/assets/logo-login.png" class="login-logo" alt="cd\ai" />
 
-        <h1>cd\ai Access</h1>
-        <p class="login-subtitle">Enter the secure demo environment</p>
+        <h1>cd\ai Demo Access</h1>
 
         <input
+          id="password"
           type="password"
-          id="password-input"
           placeholder="Enter password"
           autocomplete="off"
         />
 
-        <button id="login-button">Login</button>
+        <button id="login-btn">Login</button>
 
-        <p id="login-error" class="login-error"></p>
+        <div id="error" class="login-error"></div>
       </div>
     </div>
 
     <script>
-      document.getElementById("login-button").addEventListener("click", async () => {
-        const password = document.getElementById("password-input").value;
+      async function login() {
+        const password = document.getElementById("password").value;
 
         const res = await fetch("/auth/login", {
           method: "POST",
@@ -50,10 +43,18 @@
         if (data.ok) {
           window.location.href = "/";
         } else {
-          document.getElementById("login-error").textContent =
-            "Invalid password. Try again.";
+          document.getElementById("error").innerText = "Invalid password.";
         }
-      });
+      }
+
+      document.getElementById("login-btn").addEventListener("click", login);
+
+      // Enter key support
+      document
+        .getElementById("password")
+        .addEventListener("keypress", (e) => {
+          if (e.key === "Enter") login();
+        });
     </script>
   </body>
 </html>
