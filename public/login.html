@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>cd\ai – Secure Demo Login</title>
+    <link rel="stylesheet" href="/static/styles-login.css" />
+  </head>
+  <body>
+    <div class="login-shell">
+      <div class="login-card">
+        <div class="logo-wrap">
+          <img src="/assets/logo-login.png" alt="cd\" class="logo-img" />
+        </div>
+        <h1 class="login-title">cd\ai Governed Demo</h1>
+        <p class="login-subtitle">
+          Private prototype. Access is limited to authorized reviewers.
+        </p>
+
+        <form id="login-form">
+          <label for="password-input" class="field-label">Access Password</label>
+          <input
+            id="password-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter password"
+            required
+          />
+          <button type="submit" id="login-button">Enter</button>
+          <p id="login-error" class="login-error" aria-live="polite"></p>
+        </form>
+      </div>
+      <p class="login-footnote">
+        © <span id="year"></span> Change Directories LLC · Confidential Demonstration
+      </p>
+    </div>
+
+    <script>
+      const form = document.getElementById("login-form");
+      const pwInput = document.getElementById("password-input");
+      const errorEl = document.getElementById("login-error");
+      const yearEl = document.getElementById("year");
+      yearEl.textContent = new Date().getFullYear();
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorEl.textContent = "";
+        const password = pwInput.value.trim();
+        if (!password) return;
+
+        document.getElementById("login-button").disabled = true;
+
+        try {
+          const res = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+
+          if (!res.ok) {
+            errorEl.textContent = "Incorrect password. Please try again.";
+            document.getElementById("login-button").disabled = false;
+            pwInput.focus();
+            pwInput.select();
+            return;
+          }
+
+          window.location.href = "/";
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = "Unable to reach server. Please try again.";
+          document.getElementById("login-button").disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
