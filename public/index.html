@@ -2,16 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>cd\ai – Governed Dual-Hemisphere MVP</title>
+    <title>cd\ai MVP – Governed Dual-Hemisphere Demo</title>
+
+    <!-- Correct static path -->
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
 
   <body>
     <div class="app-shell">
+      <!-- LEFT PANEL -->
       <div class="pane-left">
         <header class="app-header">
           <div class="app-brand">
-            <img src="/assets/logo-app.png" class="app-logo" alt="cd\ai" />
+            <!-- Correct static path -->
+            <img src="/static/assets/logo-app.png" alt="cd\ai" class="app-logo" />
+
             <div class="app-titles">
               <h1>cd\ai – Governed Dual-Hemisphere MVP</h1>
               <p class="subtitle">
@@ -25,17 +30,24 @@
 
         <section class="card">
           <h2>Task Input</h2>
-          <textarea id="task-input"></textarea>
+          <textarea id="task-input" placeholder="Describe the task..."></textarea>
         </section>
 
         <section class="card">
           <h2>Goal / Governance Rules</h2>
-          <textarea id="goal-input"></textarea>
+          <textarea
+            id="goal-input"
+            placeholder="Example:
+– Make it concise
+– Maintain professional tone
+– Align with regulatory constraints
+– Avoid hallucinations"
+          ></textarea>
         </section>
 
         <section class="card card-actions">
           <button id="run-button">Run Governed Workflow</button>
-          <span id="run-status"></span>
+          <span id="run-status" class="run-status"></span>
         </section>
 
         <section class="card">
@@ -44,13 +56,14 @@
         </section>
       </div>
 
+      <!-- RIGHT PANEL -->
       <div class="pane-right">
-        <section class="card card-compact">
+        <section class="card card-compact" id="governance-rules-panel">
           <h2>Governance Rules</h2>
           <ul id="rules-list"></ul>
         </section>
 
-        <section class="card card-compact">
+        <section class="card card-compact" id="mcp-panel">
           <div class="mcp-header-row">
             <h2>MCP & Cycle</h2>
             <div class="mcp-meta">
@@ -58,11 +71,12 @@
               <span id="mcp-status-pill" class="pill pill-idle">MCP: Idle</span>
             </div>
           </div>
-          <p id="mcp-detail">Waiting to start governed workflow…</p>
+          <p id="mcp-detail" class="mcp-detail">Waiting to start governed workflow…</p>
         </section>
 
-        <section class="card card-compact">
+        <section class="card card-compact" id="flow-panel">
           <h2>Hemispheric Flow</h2>
+
           <div class="flow-visual">
             <div class="hemisphere-node hemisphere-a">
               <div class="label">Analytical</div>
@@ -83,44 +97,51 @@
               <div class="final-check" id="node-final">✔</div>
             </div>
           </div>
+
+          <p class="flow-caption">
+            A ⇄ B → ✔ Final — visual animation runs while real hemispheric passes occur.
+          </p>
         </section>
 
-        <section class="card log-card">
+        <!-- Analytical Hemisphere -->
+        <section class="card log-card" data-panel="analytical">
           <header class="log-header">
             <span>Analytical Hemisphere</span>
             <button class="chevron-btn" data-target="analytical-log">
               <span class="chevron chevron-open">▼</span>
             </button>
           </header>
-          <div id="analytical-log" class="log-content"></div>
+          <div class="log-content" id="analytical-log"></div>
         </section>
 
-        <section class="card log-card">
+        <!-- Creative Hemisphere -->
+        <section class="card log-card" data-panel="creative">
           <header class="log-header">
             <span>Creative Hemisphere</span>
             <button class="chevron-btn" data-target="creative-log">
               <span class="chevron chevron-open">▼</span>
             </button>
           </header>
-          <div id="creative-log" class="log-content"></div>
+          <div class="log-content" id="creative-log"></div>
         </section>
 
-        <section class="card log-card collapsed">
+        <!-- Immutable Ledger -->
+        <section class="card log-card collapsed" data-panel="ledger">
           <header class="log-header">
             <span>Immutable Ledger</span>
             <div class="ledger-actions">
-              <button id="download-ledger-btn">Download</button>
+              <button id="download-ledger-btn" class="download-btn">Download</button>
               <button class="chevron-btn" data-target="ledger-log">
                 <span class="chevron chevron-closed">▶</span>
               </button>
             </div>
           </header>
-
-          <div id="ledger-log" class="log-content"></div>
+          <div class="log-content" id="ledger-log"></div>
         </section>
       </div>
     </div>
 
+    <!-- Correct static paths -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
   </body>

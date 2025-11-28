@@ -4,57 +4,54 @@
     <meta charset="UTF-8" />
     <title>cd\ai – Login</title>
 
-    <link rel="stylesheet" href="/styles-login.css" />
+    <!-- Correct static path -->
+    <link rel="stylesheet" href="/static/styles-login.css" />
+
     <meta http-equiv="Cache-Control" content="no-store" />
   </head>
 
   <body>
     <div class="login-wrapper">
       <div class="login-card">
-        <img src="/assets/logo-login.png" class="login-logo" alt="cd\ai" />
+        <!-- Correct static asset path -->
+        <img src="/static/assets/logo-login.png" class="login-logo" alt="cd\ai" />
 
-        <h1>cd\ai Demo Access</h1>
+        <h1 class="login-title">cd\ai Demo Access</h1>
 
         <input
           id="password"
           type="password"
           placeholder="Enter password"
           autocomplete="off"
+          class="login-input"
         />
 
-        <button id="login-btn">Login</button>
+        <button id="login-button" class="login-button">Login</button>
 
-        <div id="error" class="login-error"></div>
+        <p id="login-error" class="login-error"></p>
       </div>
     </div>
 
     <script>
-      async function login() {
-        const password = document.getElementById("password").value;
+      // Login function — no caching, no stored state
+      document.getElementById("login-button").addEventListener("click", async () => {
+        const password = document.getElementById("password").value.trim();
+        const errorEl = document.getElementById("login-error");
 
-        const res = await fetch("/auth/login", {
+        errorEl.textContent = "";
+
+        const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password }),
+          body: JSON.stringify({ password })
         });
 
-        const data = await res.json();
-
-        if (data.ok) {
-          window.location.href = "/";
+        if (res.ok) {
+          window.location.href = "/index.html";
         } else {
-          document.getElementById("error").innerText = "Invalid password.";
+          errorEl.textContent = "Invalid password. Please try again.";
         }
-      }
-
-      document.getElementById("login-btn").addEventListener("click", login);
-
-      // Enter key support
-      document
-        .getElementById("password")
-        .addEventListener("keypress", (e) => {
-          if (e.key === "Enter") login();
-        });
+      });
     </script>
   </body>
 </html>
