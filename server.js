@@ -127,6 +127,107 @@ app.get("/health", (req, res) => {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
+  // Per-socket state for governance + conversation-based workflow
+  const socketState = {
+    governanceGoal: null,
+  };
+
+  /**
+   * submit-governance
+   * Stores the governance text for this socket and initializes the
+   * Governance Rules panel via the existing telemetry channel.
+   */
+  socket.on("submit-governance", ({ goal }) => {
+    const normalized =
+      typeof goal === "string" ? goal.trim() : "";
+
+    socketState.governanceGoal = normalized || null;
+
+    const rules = parseRulesFromGoal(normalized || "");
+    socket.emit("telemetry", {
+      type: "governance-rules",
+      rules,
+    });
+  });
+
+  /**
+   * reset-governance
+   * Clears the stored governance for this socket and clears the
+   * Governance Rules panel.
+   */
+  socket.on("reset-governance", () => {
+    socketState.governanceGoal = null;
+
+    socket.emit("telemetry", {
+      type: "governance-rules",
+      rules: [],
+    });
+  });
+
+  /**
+   * reset-conversation
+   * Reuses the existing "reset" telemetry to clear logs / output
+   * on the frontend so the user can start fresh.
+   */
+  socket.on("reset-conversation", () => {
+    socket.emit("telemetry", { type: "reset" });
+  });
+
+  /**
+   * chat-message
+   * New entry point used by the Governance Conversation panel:
+   * - Uses the stored governanceGoal (if any) as "goal"
+   * - Forwards into the existing runGovernedWorkflow pipeline
+   *   so behavior matches the original run-workflow path.
+   */
+  socket.on(
+    "chat-message",
+    async ({ text, maxCycles, governanceStrictness, perfMode }) => {
+      const input = typeof text === "string" ? text.trim() : "";
+      if (!input) {
+        return;
+      }
+
+      const goal =
+        typeof socketState.governanceGoal === "string"
+          ? socketState.governanceGoal
+          : "";
+
+      console.log("Chat-based workflow:", {
+        input,
+        goalPreview: goal.slice(0, 80),
+        maxCycles,
+        governanceStrictness,
+        perfMode,
+      });
+
+      try {
+        await runGovernedWorkflow(socket, {
+          input,
+          goal,
+          maxCycles: normalizeMaxCycles(maxCycles),
+          governanceStrictness: normalizeStrictness(governanceStrictness),
+          perfMode: normalizePerfMode(perfMode),
+        });
+      } catch (err) {
+        console.error("Workflow error (chat-message):", err);
+
+        socket.emit("telemetry", {
+          type: "mcp-status",
+          status: "Error",
+          detail:
+            "An error occurred while running the governed workflow. Please try again.",
+        });
+
+        socket.emit("telemetry", {
+          type: "final-output",
+          text: "An error occurred while running the governed workflow. Please try again.",
+        });
+      }
+    }
+  );
+
+  // Original entry point used by the previous Task Input + Run button UI
   socket.on(
     "run-workflow",
     async ({ input, goal, maxCycles, governanceStrictness, perfMode }) => {
@@ -339,7 +440,7 @@ honor that format in your draft, as long as it does not directly conflict with t
   let converged = false;
   let clarificationCount = 0;
 
-  // --- Dual-Hemisphere Cycles ------------------------------------------------
+  // --- Dual-Hemisphere Cycles -----------------------------------------------
 
   for (let cycle = 1; cycle <= effectiveMaxCycles; cycle++) {
     socket.emit("telemetry", { type: "cycle-update", cycle });
@@ -450,13 +551,17 @@ honor that format in your draft, as long as it does not directly conflict with t
           timestamp: new Date().toISOString(),
           stage: "UserFeedback",
           cycle,
-          summary: `User clarification received and will be incorporated into this cycle.`,
+          summary:
+            "User clarification received and will be incorporated into this cycle.",
           snippet: userFeedback.slice(0, 200),
         });
 
         socket.emit("telemetry", {
           type: "moderator-log",
-          message: `Cycle ${cycle}: user clarification received and injected into the MCP prompt.`,
+          message:
+            "Cycle " +
+            cycle +
+            ": user clarification received and injected into the MCP prompt.",
         });
       } else {
         ledger.push({
@@ -470,7 +575,10 @@ honor that format in your draft, as long as it does not directly conflict with t
 
         socket.emit("telemetry", {
           type: "moderator-log",
-          message: `Cycle ${cycle}: no user clarification received in time; continued with existing interpretation.`,
+          message:
+            "Cycle " +
+            cycle +
+            ": no user clarification received in time; continued with existing interpretation.",
         });
       }
     }
@@ -1010,3 +1118,4 @@ function parseRulesFromGoal(goalText) {
 server.listen(PORT, () => {
   console.log(`cd/ai governed MVP listening on http://localhost:${PORT}`);
 });
+
