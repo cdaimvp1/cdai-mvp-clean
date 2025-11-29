@@ -1,6 +1,6 @@
-/* ==========================================================================
-   GLOBAL RESET & THEME
-   ========================================================================== */
+/* ========================================================================== */
+/*  GLOBAL RESET & THEME                                                      */
+/* ========================================================================== */
 
 *,
 *::before,
@@ -17,10 +17,10 @@ body {
     sans-serif;
   background: #000000;
   color: #ffffff;
-  overflow: hidden; /* keep page height static; scroll inside panels */
+  overflow: hidden;
 }
 
-/* Scrollbars: track same as background, pill + arrows white */
+/* Scrollbars: White pill only */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -37,14 +37,9 @@ body {
   background: #ffffff;
 }
 
-* {
-  scrollbar-color: #ffffff transparent;
-  scrollbar-width: thin;
-}
-
-/* ==========================================================================
-   ROOT APP LAYOUT
-   ========================================================================== */
+/* ========================================================================== */
+/*  LAYOUT SHELL                                                              */
+/* ========================================================================== */
 
 .app-root {
   display: flex;
@@ -52,28 +47,23 @@ body {
   height: 100vh;
 }
 
-/* ==========================================================================
-   HEADER BAR
-   - spans full width
-   - left: title
-   - right: status + sliders + mode + logout
-   ========================================================================== */
+/* ========================================================================== */
+/*  HEADER BAR                                                                */
+/* ========================================================================== */
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  border-bottom: 1px solid #333333;
+  border-bottom: 1px solid #222222;
   background: #000000;
 }
-
-/* Left side (title / logo if used later) */
 
 .app-header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 24px;
 }
 
 .app-title {
@@ -81,17 +71,7 @@ body {
   font-weight: 600;
 }
 
-/* Right side (status + sliders + modes + logout) 
-   This block should visually line up with the right column width (~40%) */
-
-.app-header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-/* Status pill
-   "Status |" fixed white; status word colored per state */
+/* Status bubble */
 
 .status-pill {
   display: inline-flex;
@@ -100,6 +80,7 @@ body {
   padding: 6px 12px;
   background: #111111;
   border: 1px solid #3a3a3a;
+  color: #ffffff;
   font-size: 13px;
 }
 
@@ -111,8 +92,7 @@ body {
   font-weight: 600;
 }
 
-/* Dynamic colors for status word only */
-
+/* Dynamic colors */
 .status-idle {
   color: #ffffff;
 }
@@ -129,29 +109,29 @@ body {
   color: #f29bff;
 }
 
-.status-validator {
-  color: #7bff9a;
-}
-
 .status-user {
   color: #ffd4a3;
 }
 
+.status-validator {
+  color: #7bff9a;
+}
+
 .status-final {
-  color: #bfbfbf;
+  color: #cccccc;
 }
 
 .status-error {
   color: #ff6b81;
 }
 
-/* Sliders (Strictness / Cycles) */
-
-.header-sliders {
+.app-header-right {
   display: flex;
   align-items: center;
   gap: 16px;
 }
+
+/* Sliders */
 
 .slider-group {
   display: flex;
@@ -170,45 +150,27 @@ body {
 }
 
 .header-slider {
-  width: 140px;
-  -webkit-appearance: none;
+  width: 150px;
+}
+
+input[type="range"] {
   appearance: none;
   height: 4px;
   background: #333333;
   outline: none;
-}
-
-/* Slider track and thumb */
-
-.header-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  background: #333333;
-}
-
-.header-slider::-moz-range-track {
-  height: 4px;
-  background: #333333;
-}
-
-.header-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  background: #ffffff;
-  border-radius: 2px;
   cursor: pointer;
-  margin-top: -5px;
 }
 
-.header-slider::-moz-range-thumb {
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
   width: 14px;
   height: 14px;
-  background: #ffffff;
+  background: #0a84ff;
   border-radius: 2px;
   cursor: pointer;
 }
 
-/* Performance mode bubbles (Real / Fast / Turbo) */
+/* Performance mode toggle */
 
 .mode-toggle {
   display: flex;
@@ -223,15 +185,14 @@ body {
   padding: 6px 12px;
   font-size: 12px;
   cursor: pointer;
-  outline: none;
 }
 
 .mode-pill.active {
-  background: #333333;
-  border-color: #888888;
+  background: #0a84ff;
+  border-color: #0a84ff;
 }
 
-/* Logout button, iOS-ish flat but boxy */
+/* Logout */
 
 .logout-button {
   border: 1px solid #444444;
@@ -242,33 +203,29 @@ body {
   cursor: pointer;
 }
 
-/* ==========================================================================
-   MAIN CONTENT LAYOUT (left ~60% / right ~40%)
-   ========================================================================== */
+/* ========================================================================== */
+/*  MAIN CONTENT LAYOUT                                                       */
+/* ========================================================================== */
 
 .app-main {
   flex: 1;
   display: flex;
-  overflow: hidden; /* keep page static, scroll within panes/panels */
+  overflow: hidden;
 }
 
-/* Left pane ~60% */
+/* 40% left, 60% right */
 
 .pane-left {
-  flex: 0 0 60%;
-  max-width: 60%;
+  width: 40%;
   display: flex;
   flex-direction: column;
   padding: 12px;
   gap: 12px;
   overflow: hidden;
 }
-
-/* Right pane ~40% */
 
 .pane-right {
-  flex: 0 0 40%;
-  max-width: 40%;
+  width: 60%;
   display: flex;
   flex-direction: column;
   padding: 12px;
@@ -276,12 +233,12 @@ body {
   overflow: hidden;
 }
 
-/* ==========================================================================
-   GENERIC PANEL (boxy, frosted grey, glass-ish)
-   ========================================================================== */
+/* ========================================================================== */
+/*  PANEL BASE                                                                */
+/* ========================================================================== */
 
 .panel {
-  background: rgba(110, 110, 110, 0.18); /* glassy grey */
+  background: rgba(160, 160, 160, 0.18);
   backdrop-filter: blur(14px);
   border: 1px solid #3a3a3a;
   padding: 12px;
@@ -292,9 +249,9 @@ body {
 
 .panel-header-row {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .panel-title {
@@ -303,31 +260,22 @@ body {
   text-transform: uppercase;
 }
 
-/* Shared scroll region inside panels */
+/* Shared scroll area */
 
 .panel-scroll {
   flex: 1;
   overflow-y: auto;
 }
 
-/* Generic small button style used inside panels */
-
-.panel-button {
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-/* ==========================================================================
-   GOVERNANCE CONVERSATION (Chat – iPhone-style bubbles)
-   ========================================================================== */
+/* ========================================================================== */
+/*  CHAT PANEL                                                                */
+/* ========================================================================== */
 
 .chat-panel {
-  min-height: 220px;
+  min-height: 240px;
 }
+
+/* Chat header */
 
 .chat-header-label {
   font-size: 14px;
@@ -335,7 +283,7 @@ body {
 }
 
 .chat-reset-button {
-  border: 1px solid #444444;
+  border: 1px solid #444;
   background: #151515;
   color: #ffffff;
   padding: 4px 10px;
@@ -343,31 +291,28 @@ body {
   cursor: pointer;
 }
 
-/* Chat history area */
+/* Chat history */
 
 .chat-history {
   flex: 1;
   overflow-y: auto;
-  margin-top: 6px;
-  margin-bottom: 8px;
   padding-right: 8px;
-  display: flex;
-  flex-direction: column;
+  margin-bottom: 8px;
 }
 
-/* Chat message bubbles (user / system / final) */
+/* Message bubbles */
 
 .chat-message {
   max-width: 78%;
   padding: 8px 12px;
   margin-bottom: 8px;
-  border-radius: 16px; /* bubbles stay rounded */
+  border-radius: 16px;
   font-size: 13px;
-  line-height: 1.4;
-  word-wrap: break-word;
   white-space: pre-wrap;
+  line-height: 1.4;
 }
 
+/* User bubble (blue iMessage) */
 .chat-message.user {
   align-self: flex-end;
   background: #0a84ff;
@@ -375,6 +320,7 @@ body {
   border-bottom-right-radius: 4px;
 }
 
+/* System bubble (grey iMessage left) */
 .chat-message.system {
   align-self: flex-start;
   background: #222222;
@@ -382,14 +328,14 @@ body {
   border-bottom-left-radius: 4px;
 }
 
+/* Final governed output bubble (green) */
 .chat-message.final {
   align-self: flex-start;
   background: linear-gradient(135deg, #24c08a, #3ae7a7);
-  color: #041317;
-  border-bottom-left-radius: 4px;
+  color: #002d1b;
 }
 
-/* Chat input row (boxy) */
+/* Chat input row */
 
 .chat-input-row {
   display: flex;
@@ -404,17 +350,11 @@ body {
   color: #ffffff;
   padding: 8px 10px;
   font-size: 13px;
-  resize: none;             /* behaves like iMessage text area */
+  resize: none;
   outline: none;
-  max-height: 120px;        /* scrollbar only when necessary */
+  max-height: 120px;
   overflow-y: auto;
 }
-
-.chat-input::placeholder {
-  color: #d0d0d0;
-}
-
-/* Send icon button (no text, just an icon like ➤ or similar) */
 
 .chat-send-button {
   width: 40px;
@@ -422,31 +362,27 @@ body {
   border: none;
   background: #0a84ff;
   color: #ffffff;
+  font-size: 20px;
   cursor: pointer;
-  font-size: 18px;
 }
 
-/* ==========================================================================
-   GOAL / GOVERNANCE RULES SUBMISSION PANEL
-   - larger default height
-   ========================================================================== */
+/* ========================================================================== */
+/*  GOAL / GOVERNANCE RULES PANEL                                             */
+/* ========================================================================== */
 
 .goal-panel textarea {
   width: 100%;
-  min-height: 200px;  /* doubled base height */
-  max-height: 360px;
+  min-height: 220px; 
+  max-height: 380px;
   border: 1px solid #444444;
   background: #151515;
   color: #ffffff;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: 13px;
   resize: vertical;
-  overflow-y: auto;
 }
 
-.goal-panel textarea::placeholder {
-  color: #d0d0d0;
-}
+/* Buttons */
 
 .goal-controls {
   display: flex;
@@ -456,48 +392,52 @@ body {
 }
 
 .goal-button {
+  width: 100px;
+  padding: 7px 14px;
   border: 1px solid #444444;
   background: #151515;
   color: #ffffff;
-  padding: 6px 12px;
-  width: 98px;          /* Reset & Submit same width */
   font-size: 12px;
   cursor: pointer;
 }
 
-/* ==========================================================================
-   GOVERNANCE RULES DISPLAY PANEL (parsed rules)
-   - larger default height
-   ========================================================================== */
+.goal-button.submit {
+  background: #0a84ff;
+  border-color: #0a84ff;
+}
+
+/* ========================================================================== */
+/*  GOVERNANCE RULES DISPLAY PANEL                                            */
+/* ========================================================================== */
 
 .rules-panel {
-  min-height: 200px; /* doubled base height */
+  min-height: 220px;
 }
 
 .rules-list {
   list-style: none;
+  margin: 0;
   padding: 0;
-  margin: 4px 0 0 0;
-  max-height: 100%;
-  overflow-y: auto;
-  font-size: 11px;
 }
 
 .rules-list li {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 3px 0;
+  padding: 4px 0;
+  font-size: 12px;
 }
+
+/* Rule dot colors */
 
 .rule-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
   margin-top: 4px;
-  background: #cccccc;
+  background: #888888;
 }
 
+/* status transitions */
 .rule-status-dot.pending {
   background: #cccccc;
 }
@@ -510,46 +450,21 @@ body {
   background: #7bff9a;
 }
 
-.rule-text {
-  color: #ffffff;
+/* meta-governance colors */
+.rule-system-generated {
+  color: #4db1ff;
 }
 
-/* ==========================================================================
-   MCP & CYCLE PANEL (right column)
-   ========================================================================== */
-
-.mcp-panel {
-  min-height: 90px;
+.rule-user-clarified {
+  color: #c57dff;
 }
 
-.mcp-meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.mcp-cycle-badge {
-  font-size: 11px;
-  padding: 4px 8px;
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-}
-
-.mcp-detail {
-  font-size: 11px;
-  color: #ffffff;
-  opacity: 0.85;
-}
-
-/* ==========================================================================
-   LOG PANELS: ANALYTICAL / MODERATOR / CREATIVE / LEDGER
-   (right column, boxy with scroll)
-   ========================================================================== */
+/* ========================================================================== */
+/*  LOG PANELS                                                                */
+/* ========================================================================== */
 
 .log-panel {
-  min-height: 120px;
+  min-height: 140px;
 }
 
 .log-content {
@@ -558,13 +473,13 @@ body {
   font-size: 11px;
 }
 
+/* Log entries */
+
 .log-entry {
-  padding: 3px 4px;
-  margin-bottom: 2px;
+  padding: 4px 4px;
+  margin-bottom: 4px;
   color: #ffffff;
 }
-
-/* Left border colors by type */
 
 .log-entry.analytical {
   border-left: 2px solid #4db1ff;
@@ -587,53 +502,35 @@ body {
 }
 
 .timestamp {
-  font-size: 10px;
   opacity: 0.7;
+  font-size: 10px;
   margin-right: 4px;
 }
 
-/* Ledger header (download + collapse) */
-
-.ledger-header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ledger-button {
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  font-size: 10px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
+/* Collapse controls */
 
 .chevron-btn {
   border: 1px solid #444444;
   background: #151515;
   color: #ffffff;
-  font-size: 10px;
   padding: 3px 6px;
+  font-size: 10px;
   cursor: pointer;
 }
-
-/* Collapsed state (for any log-panel) */
 
 .log-panel.collapsed .log-content {
   display: none;
 }
 
-/* ==========================================================================
-   FOOTER
-   - matches login footer style: centered logo + text
-   ========================================================================== */
+/* ========================================================================== */
+/*  FOOTER                                                                    */
+/* ========================================================================== */
 
 .app-footer {
-  border-top: 1px solid #333333;
-  padding: 10px 0 8px;
-  text-align: center;
   background: #000000;
+  text-align: center;
+  padding: 12px 0 10px;
+  border-top: 1px solid #222222;
 }
 
 .footer-logo {
@@ -647,9 +544,9 @@ body {
   opacity: 0.7;
 }
 
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
+/* ========================================================================== */
+/*  RESPONSIVE                                                                */
+/* ========================================================================== */
 
 @media (max-width: 1080px) {
   .app-main {
@@ -658,12 +555,6 @@ body {
 
   .pane-left,
   .pane-right {
-    flex: 1 1 auto;
-    max-width: 100%;
-  }
-
-  .app-header-right {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    width: 100%;
   }
 }

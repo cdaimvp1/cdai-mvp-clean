@@ -1,151 +1,110 @@
-/* ============================================================================
-   cd\ai Governed MVP – Frontend Logic
-   ========================================================================= */
-
-/* globals io */
+// app.js – cd\ai MVP front-end logic
 
 const socket = io();
 
-/* ---- DOM references ------------------------------------------------------ */
+// ==============================
+// DOM REFERENCES
+// ==============================
 
 // Header
-const statusLabelDynamicEl = document.getElementById("status-label-dynamic");
+const statusDynamicEl = document.getElementById("status-label-dynamic");
 const strictnessSliderEl = document.getElementById("strictness-slider");
+const strictnessValueEl = document.getElementById("strictness-value");
 const cycleSliderEl = document.getElementById("cycle-slider");
-const modePills = document.querySelectorAll(".mode-pill");
+const cycleValueEl = document.getElementById("cycle-value");
+const modeRealBtn = document.getElementById("mode-real");
+const modeFastBtn = document.getElementById("mode-fast");
+const modeTurboBtn = document.getElementById("mode-turbo");
 const logoutButtonEl = document.getElementById("logout-button");
 
-// Layout / status
-const runStatusEl = document.getElementById("run-status");
-
-// Left column – Governance Conversation
+// Chat / governance conversation
 const chatHistoryEl = document.getElementById("chat-history");
 const chatInputEl = document.getElementById("chat-input");
 const chatSendButtonEl = document.getElementById("chat-send-button");
 const chatResetButtonEl = document.getElementById("chat-reset-button");
 
-// Left column – Goal / Governance submission
+// Goal / Governance rules input
 const goalInputEl = document.getElementById("goal-input");
 const goalResetButtonEl = document.getElementById("goal-reset-button");
 const goalSubmitButtonEl = document.getElementById("goal-submit-button");
 
-// Left column – Parsed governance rules display
+// Governance rules display
 const rulesListEl = document.getElementById("rules-list");
 
-// Right column – MCP & Cycle
-const cycleIndicatorEl = document.getElementById("cycle-indicator");
-const mcpDetailEl = document.getElementById("mcp-detail");
-
-// Right column – Logs
+// Logs
 const analyticalLogEl = document.getElementById("analytical-log");
 const moderatorLogEl = document.getElementById("moderator-log");
 const creativeLogEl = document.getElementById("creative-log");
 const ledgerLogEl = document.getElementById("ledger-log");
+
+// Ledger controls
+const ledgerPanelEl = document.getElementById("ledger-panel");
 const downloadLedgerBtn = document.getElementById("download-ledger-btn");
+
+// Collapsible log panels
 const logPanels = document.querySelectorAll(".log-panel");
-const chevronButtons = document.querySelectorAll(".chevron-btn");
 
-/* ---- State ---------------------------------------------------------------- */
+// ==============================
+// STATE
+// ==============================
 
+let isWorkflowRunning = false;
 let governanceLocked = false;
 let currentGoalText = "";
-let workflowRunning = false;
-
 let currentPerfMode = "real";
-let plannedCycles = 0;
-
-let awaitingClarification = false;
-let activeClarificationCycle = null;
-
+let currentRules = []; // [{ text, origin: 'user'|'system'|'user-clarified', status: 'pending'|'in-progress'|'passed' }]
 let currentLedger = [];
-let ruleState = [];
 
-/* ============================================================================
-   Helpers – formatting, status, utilities
-   ========================================================================== */
+// For MCP ↔ user clarification loop
+let pendingClarification = null; // { cycle, question, confidence }
 
-function nowStamp() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  const ss = String(d.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+// ==============================
+// SMALL HELPERS
+// ==============================
+
+function nowDateTime() {
+  // Date + time, 24h, locale friendly
+  return new Date().toLocaleString(undefined, { hour12: false });
 }
 
-function escapeHtml(text) {
-  if (text === null || text === undefined) return "";
-  const map = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  };
-  return String(text).replace(/[&<>"']/g, (c) => map[c] || c);
-}
+function setStatus(status) {
+  if (!statusDynamicEl) return;
 
-/* ---- Header status -------------------------------------------------------- */
+  const normalized = (status || "Idle").toLowerCase();
+  statusDynamicEl.textContent =
+    status === "Starting" ? "Starting" : status || "Idle";
 
-function setStatus(statusKey) {
-  if (!statusLabelDynamicEl) return;
+  // Reset classes
+  statusDynamicEl.className = "status-label-dynamic";
 
-  let labelText = "Idle";
-  let cls = "status-label-dynamic status-idle";
-
-  switch (statusKey) {
-    case "analytical":
-      labelText = "Analytical";
-      cls = "status-label-dynamic status-analytical";
-      break;
-    case "moderator":
-      labelText = "Moderator";
-      cls = "status-label-dynamic status-moderator";
-      break;
-    case "creative":
-      labelText = "Creative";
-      cls = "status-label-dynamic status-creative";
-      break;
-    case "validator":
-      labelText = "Validator";
-      cls = "status-label-dynamic status-validator";
-      break;
-    case "user":
-      labelText = "User";
-      cls = "status-label-dynamic status-user";
-      break;
-    case "final":
-      labelText = "Final";
-      cls = "status-label-dynamic status-final";
-      break;
-    case "error":
-      labelText = "Error";
-      cls = "status-label-dynamic status-error";
-      break;
-    case "idle":
-    default:
-      labelText = "Idle";
-      cls = "status-label-dynamic status-idle";
-      break;
+  // Add color class
+  if (normalized.includes("analytical")) {
+    statusDynamicEl.classList.add("status-analytical");
+  } else if (normalized.includes("moderator")) {
+    statusDynamicEl.classList.add("status-moderator");
+  } else if (normalized.includes("creative")) {
+    statusDynamicEl.classList.add("status-creative");
+  } else if (normalized.includes("validator")) {
+    statusDynamicEl.classList.add("status-validator");
+  } else if (normalized.includes("user")) {
+    statusDynamicEl.classList.add("status-user");
+  } else if (normalized.includes("final")) {
+    statusDynamicEl.classList.add("status-final");
+  } else if (normalized.includes("error")) {
+    statusDynamicEl.classList.add("status-error");
+  } else {
+    statusDynamicEl.classList.add("status-idle");
   }
-
-  statusLabelDynamicEl.textContent = labelText;
-  statusLabelDynamicEl.className = cls;
 }
 
-/* ---- Sliders & perf mode -------------------------------------------------- */
-
-function getGovernanceStrictness() {
-  if (!strictnessSliderEl) return 0.85;
-  const v = Number(strictnessSliderEl.value);
-  return Number.isFinite(v) ? v : 0.85;
+function getStrictness() {
+  const v = parseFloat(strictnessSliderEl?.value ?? "0.85");
+  if (!Number.isFinite(v)) return 0.85;
+  return Math.min(1, Math.max(0, v));
 }
 
 function getMaxCycles() {
-  if (!cycleSliderEl) return 5;
-  const v = parseInt(cycleSliderEl.value, 10);
+  const v = parseInt(cycleSliderEl?.value ?? "5", 10);
   if (!Number.isFinite(v)) return 5;
   return Math.min(10, Math.max(1, v));
 }
@@ -154,89 +113,67 @@ function getPerfMode() {
   return currentPerfMode || "real";
 }
 
-function initPerfModeControls() {
-  modePills.forEach((pill) => {
-    pill.addEventListener("click", () => {
-      if (workflowRunning) return; // avoid mode flip mid-run in demo
-      const mode = pill.dataset.mode || "real";
-      currentPerfMode = mode;
-
-      modePills.forEach((p) => {
-        p.classList.toggle("active", p === pill);
-      });
-    });
-  });
+function parseRulesFromText(text) {
+  if (!text) return [];
+  return text
+    .split(/\n|;/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
-/* ============================================================================
-   Chat rendering
-   ========================================================================== */
+// ==============================
+// UI: CHAT
+// ==============================
 
-function appendChatMessage(kind, text, meta) {
-  if (!chatHistoryEl) return;
-  const message = text || "";
-  const stamp = (meta && meta.timestamp) || nowStamp();
+function appendChatMessage({ text, sender, isFinal = false }) {
+  if (!chatHistoryEl || !text) return;
 
-  const row = document.createElement("div");
-  row.className = "chat-message-row";
+  const div = document.createElement("div");
+  div.classList.add("chat-message");
 
-  const bubble = document.createElement("div");
-  bubble.className = "chat-message";
-
-  if (kind === "user") {
-    row.classList.add("user");
-    bubble.classList.add("user");
-  } else if (kind === "system-final") {
-    row.classList.add("system");
-    bubble.classList.add("final");
+  if (isFinal) {
+    div.classList.add("final");
+  } else if (sender === "user") {
+    div.classList.add("user");
   } else {
-    row.classList.add("system");
-    bubble.classList.add("system");
+    div.classList.add("system");
   }
 
-  const body = document.createElement("div");
-  body.className = "message-text";
-  body.innerText = message;
-
-  const metaDiv = document.createElement("div");
-  metaDiv.className = "message-meta";
-  metaDiv.textContent = stamp;
-
-  bubble.appendChild(body);
-  bubble.appendChild(metaDiv);
-  row.appendChild(bubble);
-
-  chatHistoryEl.appendChild(row);
+  div.textContent = text;
+  chatHistoryEl.appendChild(div);
   chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
 }
 
-function clearChatHistory() {
-  if (!chatHistoryEl) return;
-  chatHistoryEl.innerHTML = "";
+function resetConversationIfAllowed() {
+  if (isWorkflowRunning) return;
+  if (chatHistoryEl) chatHistoryEl.innerHTML = "";
+  pendingClarification = null;
 }
 
-/* ============================================================================
-   Governance rules list handling
-   ========================================================================== */
+// ==============================
+// UI: RULES PANEL
+// ==============================
 
-function initGovernanceRules(rules) {
+function renderRules() {
   if (!rulesListEl) return;
-
   rulesListEl.innerHTML = "";
-  ruleState = (rules || []).map((r) => ({
-    text: r,
-    status: "pending",
-  }));
 
-  ruleState.forEach((rule, idx) => {
+  currentRules.forEach((rule, index) => {
     const li = document.createElement("li");
-    li.dataset.index = String(idx);
+    li.dataset.index = String(index);
 
     const dot = document.createElement("span");
-    dot.className = "rule-status-dot pending";
+    dot.classList.add("rule-status-dot");
+    dot.classList.add(rule.status || "pending");
 
     const textSpan = document.createElement("span");
-    textSpan.className = "rule-text";
+    textSpan.classList.add("rule-text");
+    if (rule.origin === "system" || rule.origin === "system_inferred") {
+      textSpan.classList.add("rule-system-generated");
+    } else if (rule.origin === "user-clarified") {
+      textSpan.classList.add("rule-user-clarified");
+    }
+
     textSpan.textContent = rule.text;
 
     li.appendChild(dot);
@@ -245,89 +182,142 @@ function initGovernanceRules(rules) {
   });
 }
 
+function initRulesFromServer(payloadRules) {
+  const incoming = Array.isArray(payloadRules) ? payloadRules : [];
+
+  if (!incoming.length && currentGoalText) {
+    // fallback: parse from current goal
+    const parsed = parseRulesFromText(currentGoalText);
+    currentRules = parsed.map((t) => ({
+      text: t,
+      origin: "user",
+      status: "pending",
+    }));
+  } else {
+    currentRules = incoming.map((r) => {
+      if (typeof r === "string") {
+        return { text: r, origin: "user", status: "pending" };
+      }
+      return {
+        text: r.text || r.rule || "",
+        origin: r.origin || "user",
+        status: r.status || "pending",
+      };
+    });
+  }
+
+  renderRules();
+}
+
 function markRulesProgress() {
-  if (!rulesListEl) return;
-
-  ruleState.forEach((rule, index) => {
-    const li = rulesListEl.querySelector(`li[data-index="${index}"]`);
-    if (!li) return;
-    const dot = li.querySelector(".rule-status-dot");
-    if (!dot) return;
-
+  // simple step: first pending → in-progress, first in-progress → passed
+  for (let i = 0; i < currentRules.length; i++) {
+    const rule = currentRules[i];
     if (rule.status === "pending") {
       rule.status = "in-progress";
-      dot.className = "rule-status-dot in-progress";
+      break;
     } else if (rule.status === "in-progress") {
       rule.status = "passed";
-      dot.className = "rule-status-dot passed";
+      break;
     }
-  });
+  }
+  renderRules();
 }
 
 function markRulesFinal() {
-  if (!rulesListEl) return;
-
-  ruleState.forEach((rule, index) => {
-    rule.status = "passed";
-    const li = rulesListEl.querySelector(`li[data-index="${index}"]`);
-    if (!li) return;
-    const dot = li.querySelector(".rule-status-dot");
-    if (!dot) return;
-    dot.className = "rule-status-dot passed";
-  });
+  currentRules = currentRules.map((r) => ({
+    ...r,
+    status: "passed",
+  }));
+  renderRules();
 }
 
-/* ============================================================================
-   Logs & ledger
-   ========================================================================== */
+// ==============================
+// UI: LOGS
+// ==============================
 
-function appendLogEntry(containerEl, kindClass, message) {
-  if (!containerEl) return;
+function appendAnalyticalLog(message) {
+  if (!analyticalLogEl) return;
   const div = document.createElement("div");
-  div.className = `log-entry ${kindClass}`;
-  div.innerHTML = `<span class="timestamp">${escapeHtml(
-    nowStamp()
-  )}</span>${escapeHtml(message)}`;
-  containerEl.appendChild(div);
-  containerEl.scrollTop = containerEl.scrollHeight;
+  div.className = "log-entry analytical";
+  div.innerHTML = `<span class="timestamp">${nowDateTime()}</span>${escapeHtml(
+    message
+  )}`;
+  analyticalLogEl.appendChild(div);
+  analyticalLogEl.scrollTop = analyticalLogEl.scrollHeight;
+}
+
+function appendModeratorLog(message) {
+  if (!moderatorLogEl) return;
+  const div = document.createElement("div");
+  div.className = "log-entry moderator";
+  div.innerHTML = `<span class="timestamp">${nowDateTime()}</span>${escapeHtml(
+    message
+  )}`;
+  moderatorLogEl.appendChild(div);
+  moderatorLogEl.scrollTop = moderatorLogEl.scrollHeight;
+}
+
+function appendCreativeLog(message) {
+  if (!creativeLogEl) return;
+  const div = document.createElement("div");
+  div.className = "log-entry creative";
+  div.innerHTML = `<span class="timestamp">${nowDateTime()}</span>${escapeHtml(
+    message
+  )}`;
+  creativeLogEl.appendChild(div);
+  creativeLogEl.scrollTop = creativeLogEl.scrollHeight;
 }
 
 function updateLedger(entries) {
-  currentLedger = entries.slice();
+  currentLedger = Array.isArray(entries) ? [...entries] : [];
   if (!ledgerLogEl) return;
 
   ledgerLogEl.innerHTML = "";
-
   currentLedger.forEach((e) => {
     const div = document.createElement("div");
     div.className = "log-entry ledger";
-    const ts = escapeHtml(e.timestamp || "");
-    const stage = escapeHtml(e.stage || "");
-    const cyc =
-      typeof e.cycle === "number" ? `cycle ${e.cycle}` : "cycle –";
-    const summary = escapeHtml(e.summary || "");
-    div.innerHTML = `<span class="timestamp">${ts}</span>[${stage} – ${cyc}] ${summary}`;
+    const ts = e.timestamp || nowDateTime();
+    div.innerHTML = `<span class="timestamp">${escapeHtml(
+      ts
+    )}</span>[${escapeHtml(e.stage)} – cycle ${escapeHtml(
+      String(e.cycle)
+    )}] ${escapeHtml(e.summary || "")}`;
     ledgerLogEl.appendChild(div);
   });
 
   ledgerLogEl.scrollTop = ledgerLogEl.scrollHeight;
 }
 
-function initLogCollapsibles() {
-  chevronButtons.forEach((btn) => {
+function resetLogsAndLedger() {
+  if (analyticalLogEl) analyticalLogEl.innerHTML = "";
+  if (moderatorLogEl) moderatorLogEl.innerHTML = "";
+  if (creativeLogEl) creativeLogEl.innerHTML = "";
+  if (ledgerLogEl) ledgerLogEl.innerHTML = "";
+  currentLedger = [];
+}
+
+// ==============================
+// UI: COLLAPSIBLE PANELS
+// ==============================
+
+function initCollapsibles() {
+  logPanels.forEach((panel) => {
+    const btn = panel.querySelector(".chevron-btn");
+    if (!btn) return;
     btn.addEventListener("click", () => {
-      const panel = btn.closest(".log-panel");
-      if (!panel) return;
       panel.classList.toggle("collapsed");
     });
   });
 }
 
-/* ---- Ledger download ------------------------------------------------------ */
+// ==============================
+// UI: LEDGER DOWNLOAD
+// ==============================
 
 if (downloadLedgerBtn) {
   downloadLedgerBtn.addEventListener("click", () => {
-    if (!currentLedger || currentLedger.length === 0) {
+    if (!currentLedger.length) {
       alert("No ledger entries available yet.");
       return;
     }
@@ -348,381 +338,49 @@ if (downloadLedgerBtn) {
   });
 }
 
-/* ============================================================================
-   Governance submission & reset
-   ========================================================================== */
+// ==============================
+// UI: HEADER CONTROLS
+// ==============================
 
-function parseRulesLocal(goalText) {
-  if (!goalText) return [];
-  const pieces = goalText
-    .split(/\n|;/)
-    .map((r) => r.trim())
-    .filter((r) => r.length > 0);
-  return pieces.length ? pieces : [goalText.trim()];
-}
-
-function handleSubmitGovernance() {
-  if (workflowRunning) {
-    appendChatMessage(
-      "system",
-      "A governed workflow is currently running. Please wait until it completes before changing governance rules."
-    );
-    return;
+function updateSliderLabels() {
+  if (strictnessValueEl && strictnessSliderEl) {
+    strictnessValueEl.textContent = getStrictness().toFixed(2);
   }
-
-  const text = (goalInputEl?.value || "").trim();
-  if (!text) {
-    appendChatMessage(
-      "system",
-      "Please enter governance rules or a goal before submitting."
-    );
-    return;
-  }
-
-  currentGoalText = text;
-  governanceLocked = true;
-
-  const rules = parseRulesLocal(text);
-  initGovernanceRules(rules);
-
-  if (runStatusEl) {
-    runStatusEl.textContent =
-      "Governance rules submitted. You may now send tasks in the conversation.";
-  }
-
-  appendChatMessage(
-    "system",
-    "Governance rules have been submitted and locked for this demo. You can still reset and resubmit before running a new task."
-  );
-}
-
-function handleResetGovernance() {
-  if (workflowRunning) {
-    appendChatMessage(
-      "system",
-      "Cannot reset governance while a governed workflow is running."
-    );
-    return;
-  }
-
-  if (goalInputEl) goalInputEl.value = "";
-  currentGoalText = "";
-  governanceLocked = false;
-  ruleState = [];
-  if (rulesListEl) rulesListEl.innerHTML = "";
-
-  if (runStatusEl) {
-    runStatusEl.textContent = "Governance rules cleared.";
-  }
-
-  appendChatMessage(
-    "system",
-    "Governance rules have been cleared. Enter new rules and click Submit to continue."
-  );
-}
-
-/* ============================================================================
-   Conversation chat – send, reset, clarifications
-   ========================================================================== */
-
-function handleChatSend() {
-  if (!chatInputEl) return;
-  const text = chatInputEl.value.trim();
-  if (!text) return;
-
-  // If awaiting clarification, send this as clarification response
-  if (workflowRunning && awaitingClarification && activeClarificationCycle) {
-    appendChatMessage("user", text);
-    socket.emit("clarification-response", {
-      cycle: activeClarificationCycle,
-      answer: text,
-    });
-
-    awaitingClarification = false;
-    activeClarificationCycle = null;
-
-    appendChatMessage(
-      "system",
-      "Your clarification has been sent to the MCP for this workflow cycle."
-    );
-
-    chatInputEl.value = "";
-    return;
-  }
-
-  // If workflow is running but not expecting clarification, block new task
-  if (workflowRunning) {
-    appendChatMessage(
-      "system",
-      "A governed workflow is already in progress. Please wait for it to finish before starting a new task."
-    );
-    return;
-  }
-
-  // Governance must be submitted first
-  if (!governanceLocked || !currentGoalText.trim()) {
-    appendChatMessage("system", "Please submit governance rules before sending a task.");
-    return;
-  }
-
-  // Normal new task flow
-  appendChatMessage("user", text);
-  chatInputEl.value = "";
-
-  startGovernedWorkflow(text);
-}
-
-function handleChatReset() {
-  if (workflowRunning) {
-    appendChatMessage(
-      "system",
-      "Cannot reset the conversation while a governed workflow is running."
-    );
-    return;
-  }
-
-  clearChatHistory();
-  appendChatMessage(
-    "system",
-    "Conversation reset. Governance rules and logs remain unchanged. You may submit a new task when ready."
-  );
-}
-
-/* ============================================================================
-   Workflow lifecycle
-   ========================================================================== */
-
-function startGovernedWorkflow(taskInput) {
-  workflowRunning = true;
-  awaitingClarification = false;
-  activeClarificationCycle = null;
-  setStatus("user");
-
-  if (runStatusEl) {
-    runStatusEl.textContent = "Running governed workflow…";
-  }
-
-  resetWorkflowUIForNewRun();
-
-  const payload = {
-    input: taskInput,
-    goal: currentGoalText || "",
-    maxCycles: getMaxCycles(),
-    governanceStrictness: getGovernanceStrictness(),
-    perfMode: getPerfMode(),
-  };
-
-  socket.emit("run-workflow", payload);
-}
-
-function resetWorkflowUIForNewRun() {
-  // Clear logs/ledger/cycle indicators but keep chat + governance rules
-  if (analyticalLogEl) analyticalLogEl.innerHTML = "";
-  if (moderatorLogEl) moderatorLogEl.innerHTML = "";
-  if (creativeLogEl) creativeLogEl.innerHTML = "";
-  if (ledgerLogEl) ledgerLogEl.innerHTML = "";
-  currentLedger = [];
-
-  if (cycleIndicatorEl) cycleIndicatorEl.textContent = "Cycle: –";
-  if (mcpDetailEl) mcpDetailEl.textContent = "";
-
-  // Rules remain; their dots will be updated by progress/final events
-}
-
-/* ============================================================================
-   Socket telemetry handling
-   ========================================================================== */
-
-socket.on("telemetry", (payload) => {
-  const type = payload && payload.type;
-
-  switch (type) {
-    case "reset":
-      handleTelemetryReset();
-      break;
-
-    case "cycle-plan":
-      handleTelemetryCyclePlan(payload.plannedCycles);
-      break;
-
-    case "final-output":
-      handleTelemetryFinalOutput(payload.text);
-      break;
-
-    case "governance-rules":
-      handleTelemetryGovernanceRules(payload.rules || []);
-      break;
-
-    case "governance-rules-progress":
-      handleTelemetryRulesProgress();
-      break;
-
-    case "governance-rules-final":
-      handleTelemetryRulesFinal();
-      break;
-
-    case "mcp-status":
-      handleTelemetryMcpStatus(payload.status, payload.detail);
-      break;
-
-    case "cycle-update":
-      handleTelemetryCycleUpdate(payload.cycle);
-      break;
-
-    case "hemisphere-log":
-      handleTelemetryHemisphereLog(payload.hemisphere, payload.message);
-      break;
-
-    case "moderator-log":
-      handleTelemetryModeratorLog(payload.message);
-      break;
-
-    case "clarification-request":
-      handleTelemetryClarificationRequest(payload);
-      break;
-
-    case "ledger":
-      handleTelemetryLedger(payload.entries || []);
-      break;
-
-    default:
-      break;
-  }
-});
-
-/* ---- Individual telemetry handlers --------------------------------------- */
-
-function handleTelemetryReset() {
-  // Server signals start of a run; logs already cleared locally in startGovernedWorkflow
-  // but we keep this in case server triggers reset for error cases.
-  resetWorkflowUIForNewRun();
-}
-
-function handleTelemetryCyclePlan(planned) {
-  plannedCycles = Math.max(1, planned || 1);
-}
-
-function handleTelemetryFinalOutput(text) {
-  // Final governed text flows into chat
-  appendChatMessage("system-final", text || "Governed workflow completed with no content.");
-
-  workflowRunning = false;
-  awaitingClarification = false;
-  activeClarificationCycle = null;
-
-  if (runStatusEl) {
-    runStatusEl.textContent = "Governed workflow complete.";
-  }
-  setStatus("final");
-
-  // After a short delay, we can visually return to Idle state
-  setTimeout(() => {
-    if (!workflowRunning) {
-      setStatus("idle");
-    }
-  }, 1500);
-}
-
-function handleTelemetryGovernanceRules(rules) {
-  // Server’s parsed rules; show them (overrides local parse if any differences)
-  initGovernanceRules(rules);
-}
-
-function handleTelemetryRulesProgress() {
-  markRulesProgress();
-}
-
-function handleTelemetryRulesFinal() {
-  markRulesFinal();
-}
-
-function handleTelemetryMcpStatus(status, detail) {
-  if (status === "Analytical Pass") {
-    setStatus("analytical");
-  } else if (status === "Moderator") {
-    setStatus("moderator");
-  } else if (status === "Creative Pass") {
-    setStatus("creative");
-  } else if (status === "Finalized") {
-    setStatus("final");
-  } else if (status === "Error") {
-    setStatus("error");
-  } else if (status === "Starting") {
-    setStatus("analytical"); // treat as pre-analytical startup
-  } else {
-    setStatus("idle");
-  }
-
-  if (mcpDetailEl && typeof detail === "string") {
-    mcpDetailEl.textContent = detail;
+  if (cycleValueEl && cycleSliderEl) {
+    cycleValueEl.textContent = String(getMaxCycles());
   }
 }
 
-function handleTelemetryCycleUpdate(cycle) {
-  if (cycleIndicatorEl) {
-    const n = Number(cycle);
-    const label = Number.isFinite(n) ? `Cycle: ${n}` : "Cycle: –";
-    cycleIndicatorEl.textContent = label;
-  }
+if (strictnessSliderEl) {
+  strictnessSliderEl.addEventListener("input", updateSliderLabels);
+}
+if (cycleSliderEl) {
+  cycleSliderEl.addEventListener("input", updateSliderLabels);
+}
+updateSliderLabels();
+
+function setPerfMode(mode) {
+  currentPerfMode = mode;
+  [modeRealBtn, modeFastBtn, modeTurboBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.classList.remove("active");
+  });
+
+  if (mode === "real" && modeRealBtn) modeRealBtn.classList.add("active");
+  if (mode === "fast" && modeFastBtn) modeFastBtn.classList.add("active");
+  if (mode === "turbo" && modeTurboBtn) modeTurboBtn.classList.add("active");
 }
 
-function handleTelemetryHemisphereLog(hemisphere, message) {
-  const msg =
-    message ||
-    (hemisphere === "A"
-      ? "Analytical hemisphere log entry."
-      : "Creative hemisphere log entry.");
+if (modeRealBtn)
+  modeRealBtn.addEventListener("click", () => setPerfMode("real"));
+if (modeFastBtn)
+  modeFastBtn.addEventListener("click", () => setPerfMode("fast"));
+if (modeTurboBtn)
+  modeTurboBtn.addEventListener("click", () => setPerfMode("turbo"));
 
-  if (hemisphere === "A") {
-    appendLogEntry(analyticalLogEl, "analytical", msg);
-  } else {
-    appendLogEntry(creativeLogEl, "creative", msg);
-  }
-}
+setPerfMode("real");
 
-function handleTelemetryModeratorLog(message) {
-  const msg = message || "Moderator log entry.";
-  appendLogEntry(moderatorLogEl, "moderator", msg);
-}
-
-function handleTelemetryClarificationRequest(payload) {
-  const question =
-    payload.question ||
-    "The MCP needs a brief clarification. Please respond in 1–2 sentences.";
-  const confidence = payload.confidence;
-  const cycle = payload.cycle || 1;
-
-  awaitingClarification = true;
-  activeClarificationCycle = cycle;
-
-  let msg = question;
-  if (typeof confidence === "number") {
-    const c = confidence.toFixed(2);
-    let label = " (model confidence ";
-    if (confidence >= 0.75) {
-      label += `${c}, high)`;
-    } else if (confidence >= 0.45) {
-      label += `${c}, medium)`;
-    } else {
-      label += `${c}, low – asking for clarification)`;
-    }
-    msg += label;
-  }
-
-  appendChatMessage(
-    "system",
-    `${msg}\n\nPlease reply in this chat to answer the clarification request.`
-  );
-}
-
-function handleTelemetryLedger(entries) {
-  updateLedger(entries);
-}
-
-/* ============================================================================
-   Logout
-   ========================================================================== */
-
+// Logout
 if (logoutButtonEl) {
   logoutButtonEl.addEventListener("click", async () => {
     try {
@@ -735,9 +393,111 @@ if (logoutButtonEl) {
   });
 }
 
-/* ============================================================================
-   Wire up UI events
-   ========================================================================== */
+// ==============================
+// UI: GOAL / GOVERNANCE CONTROLS
+// ==============================
+
+function lockGovernance() {
+  if (!goalInputEl) return;
+  const text = goalInputEl.value.trim();
+  currentGoalText = text;
+  governanceLocked = true;
+
+  const parsed = parseRulesFromText(text);
+  currentRules = parsed.map((r) => ({
+    text: r,
+    origin: "user",
+    status: "pending",
+  }));
+  renderRules();
+
+  appendChatMessage({
+    sender: "system",
+    text: "Governance rules submitted. All subsequent runs will enforce this configuration until you reset or change them.",
+  });
+}
+
+if (goalSubmitButtonEl) {
+  goalSubmitButtonEl.addEventListener("click", () => {
+    if (isWorkflowRunning) {
+      appendChatMessage({
+        sender: "system",
+        text: "Cannot change governance while a workflow is running. Please wait for completion.",
+      });
+      return;
+    }
+    lockGovernance();
+  });
+}
+
+if (goalResetButtonEl) {
+  goalResetButtonEl.addEventListener("click", () => {
+    if (isWorkflowRunning) {
+      appendChatMessage({
+        sender: "system",
+        text: "Cannot reset governance while a workflow is running.",
+      });
+      return;
+    }
+    if (goalInputEl) goalInputEl.value = "";
+    governanceLocked = false;
+    currentGoalText = "";
+    currentRules = [];
+    renderRules();
+    appendChatMessage({
+      sender: "system",
+      text: "Governance rules cleared. Submit new rules before running the next task.",
+    });
+  });
+}
+
+// ==============================
+// CHAT SEND HANDLER
+// ==============================
+
+function handleChatSend() {
+  const raw = (chatInputEl?.value ?? "").trim();
+  if (!raw) return;
+
+  // Always append user's message for visibility
+  appendChatMessage({ text: raw, sender: "user" });
+  if (chatInputEl) chatInputEl.value = "";
+
+  // If we are in a clarification loop, treat this as the answer
+  if (pendingClarification && typeof pendingClarification.cycle === "number") {
+    socket.emit("clarification-response", {
+      cycle: pendingClarification.cycle,
+      answer: raw,
+    });
+
+    appendChatMessage({
+      sender: "system",
+      text: "Clarification sent to the MCP. The governed workflow will continue.",
+    });
+
+    pendingClarification = null;
+    return;
+  }
+
+  // Otherwise this is a new task request
+  if (!governanceLocked) {
+    appendChatMessage({
+      sender: "system",
+      text: "Please submit your governance rules before running a task.",
+    });
+    return;
+  }
+
+  if (isWorkflowRunning) {
+    appendChatMessage({
+      sender: "system",
+      text: "A governed workflow is already running. Please wait until it completes.",
+    });
+    return;
+  }
+
+  runGovernedWorkflow(raw);
+}
 
 if (chatSendButtonEl) {
   chatSendButtonEl.addEventListener("click", handleChatSend);
@@ -753,24 +513,171 @@ if (chatInputEl) {
 }
 
 if (chatResetButtonEl) {
-  chatResetButtonEl.addEventListener("click", handleChatReset);
+  chatResetButtonEl.addEventListener("click", () => {
+    resetConversationIfAllowed();
+  });
 }
 
-if (goalSubmitButtonEl) {
-  goalSubmitButtonEl.addEventListener("click", handleSubmitGovernance);
+// ==============================
+// RUN GOVERNED WORKFLOW
+// ==============================
+
+function runGovernedWorkflow(taskText) {
+  isWorkflowRunning = true;
+  setStatus("Starting");
+
+  const payload = {
+    input: taskText,
+    goal: currentGoalText,
+    maxCycles: getMaxCycles(),
+    governanceStrictness: getStrictness(),
+    perfMode: getPerfMode(),
+  };
+
+  socket.emit("run-workflow", payload);
 }
 
-if (goalResetButtonEl) {
-  goalResetButtonEl.addEventListener("click", handleResetGovernance);
+// ==============================
+// SOCKET.IO TELEMETRY
+// ==============================
+
+socket.on("telemetry", (payload) => {
+  if (!payload || !payload.type) return;
+
+  switch (payload.type) {
+    case "reset":
+      // clear logs + ledger, but keep chat and rules
+      resetLogsAndLedger();
+      // reset rule statuses to pending if already defined
+      currentRules = currentRules.map((r) => ({ ...r, status: "pending" }));
+      renderRules();
+      pendingClarification = null;
+      break;
+
+    case "cycle-plan":
+      // Currently used only for animation in prior design – no-op here.
+      break;
+
+    case "final-output":
+      handleFinalOutput(payload.text);
+      break;
+
+    case "governance-rules":
+      initRulesFromServer(payload.rules || []);
+      break;
+
+    case "governance-rules-progress":
+      markRulesProgress();
+      break;
+
+    case "governance-rules-final":
+      markRulesFinal();
+      break;
+
+    case "mcp-status":
+      if (payload.status) {
+        setStatus(payload.status);
+      }
+      break;
+
+    case "cycle-update":
+      // No explicit UI element tied to this in the new layout.
+      break;
+
+    case "hemisphere-log":
+      if (payload.hemisphere === "A") {
+        appendAnalyticalLog(payload.message || "");
+      } else {
+        appendCreativeLog(payload.message || "");
+      }
+      break;
+
+    case "moderator-log":
+      appendModeratorLog(payload.message || "");
+      break;
+
+    case "clarification-request":
+      handleClarificationRequest(payload);
+      break;
+
+    case "ledger":
+      updateLedger(payload.entries || []);
+      break;
+
+    default:
+      break;
+  }
+});
+
+// ==============================
+// FINAL OUTPUT HANDLER
+// ==============================
+
+function handleFinalOutput(text) {
+  isWorkflowRunning = false;
+  setStatus("Final");
+  appendChatMessage({
+    text: text || "No final text returned.",
+    sender: "system",
+    isFinal: true,
+  });
 }
 
-/* Init shared UI bits */
-initPerfModeControls();
-initLogCollapsibles();
+// ==============================
+// CLARIFICATION HANDLER
+// ==============================
 
-/* Initial greeting */
-appendChatMessage(
-  "system",
-  "cd\\ai governed MVP is ready. Enter governance rules in the Goal / Governance panel, click Submit, then send a task here in the conversation to run a governed workflow."
-);
-setStatus("idle");
+function handleClarificationRequest(payload) {
+  const { question, confidence, cycle } = payload || {};
+
+  pendingClarification = {
+    cycle: typeof cycle === "number" ? cycle : null,
+    question: question || null,
+    confidence:
+      typeof confidence === "number" ? confidence : null,
+  };
+
+  let msg = question || "The MCP is requesting a brief clarification.";
+  if (typeof confidence === "number") {
+    let tier;
+    if (confidence >= 0.75) tier = "high-confidence inference";
+    else if (confidence >= 0.45) tier = "medium-confidence inference";
+    else tier = "low-confidence inference";
+    msg += ` (inference tier: ${tier}, score: ${confidence.toFixed(2)})`;
+  }
+
+  appendChatMessage({
+    sender: "system",
+    text: msg,
+  });
+
+  appendChatMessage({
+    sender: "system",
+    text: "Please respond in 1–2 sentences in the chat. Your answer will be applied as a clarified rule for the next cycle.",
+  });
+}
+
+// ==============================
+// ESCAPE HTML UTILITY
+// ==============================
+
+function escapeHtml(text) {
+  if (text === null || text === undefined) return "";
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  return String(text).replace(/[&<>"']/g, (c) => map[c] || c);
+}
+
+// ==============================
+// INIT
+// ==============================
+
+document.addEventListener("DOMContentLoaded", () => {
+  initCollapsibles();
+  setStatus("Idle");
+});
