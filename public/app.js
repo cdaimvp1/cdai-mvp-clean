@@ -1,9 +1,11 @@
 const socket = io();
 
 // DOM refs
+const taskInputEl = document.getElementById("task-input");
 const goalInputEl = document.getElementById("goal-input");
 const runButtonEl = document.getElementById("run-button");
 const runStatusEl = document.getElementById("run-status");
+const finalOutputEl = document.getElementById("final-output");
 
 const rulesListEl = document.getElementById("rules-list");
 const cycleIndicatorEl = document.getElementById("cycle-indicator");
@@ -17,20 +19,25 @@ const nodeFinalEl = document.getElementById("node-final");
 
 const analyticalLogEl = document.getElementById("analytical-log");
 const creativeLogEl = document.getElementById("creative-log");
+const moderatorLogEl = document.getElementById("moderator-log");
 const ledgerLogEl = document.getElementById("ledger-log");
 
 const collapsibleCards = document.querySelectorAll(".log-card");
 const downloadLedgerBtn = document.getElementById("download-ledger-btn");
 const logoutButtonEl = document.getElementById("logout-button");
 
-// Chat UI refs
-const chatLogEl = document.getElementById("chat-log");
-const chatInputEl = document.getElementById("chat-input");
-const chatSendButtonEl = document.getElementById("chat-send-button");
-
-// Sliders + perf mode
+// sliders + perf mode
 const strictnessSliderEl = document.getElementById("strictness-slider");
 const cycleSliderEl = document.getElementById("cycle-slider");
+
+// MCP ↔ user clarification panel
+const clarificationPanelEl = document.getElementById("clarification-panel");
+const clarificationQuestionEl = document.getElementById("clarification-question");
+const clarificationConfidenceEl = document.getElementById(
+  "clarification-confidence"
+);
+const clarificationInputEl = document.getElementById("clarification-input");
+const clarificationSendBtnEl = document.getElementById("clarification-send");
 
 // Animation + output gating state
 let plannedCycles = 0;
@@ -40,6 +47,9 @@ let pendingFinalText = null;
 
 // Ledger state
 let currentLedger = [];
+
+// Clarification state
+let activeClarificationCycle = null;
 
 // ---- Helpers to read controls ----------------------------------------------
 
@@ -64,169 +74,34 @@ function getPerfMode() {
   return "real";
 }
 
-// ---- Chat helpers -----------------------------------------------------------
+// --- Run button --------------------------------------------------------------
 
-function addChatSystemMessage(text) {
-  if (!chatLogEl) return;
-  const row = document.createElement("div");
-  row.className = "chat-row chat-row-center";
+runButtonEl.addEventListener("click", () => {
+  const input = taskInputEl.value.trim();
+  const goal = goalInputEl.value.trim();
 
-  const span = document.createElement("div");
-  span.className = "chat-system-message";
-  span.textContent = text;
-
-  row.appendChild(span);
-  chatLogEl.appendChild(row);
-  chatLogEl.scrollTop = chatLogEl.scrollHeight;
-}
-
-function addChatMessage(role, text) {
-  if (!chatLogEl || !text) return;
-
-  let side = "right";
-  let label = "";
-  let avatarText = "";
-  let extraBubbleClass = "";
-
-  switch (role) {
-    case "user":
-      side = "left";
-      label = "You";
-      avatarText = "ML";
-      break;
-    case "final":
-      side = "right";
-      label = "Final Output";
-      avatarText = "✔";
-      extraBubbleClass = "chat-bubble-final";
-      break;
-    case "task":
-      side = "right";
-      label = "Task Agent";
-      avatarText = "T";
-      break;
-    case "analytical":
-      side = "right";
-      label = "Analytical Hemisphere";
-      avatarText = "A";
-      break;
-    case "moderator":
-      side = "right";
-      label = "Moderator";
-      avatarText = "M";
-      break;
-    case "creative":
-      side = "right";
-      label = "Creative Hemisphere";
-      avatarText = "C";
-      break;
-    case "validator":
-      side = "right";
-      label = "Validator";
-      avatarText = "V";
-      break;
-    default:
-      side = "right";
-      label = "MCP";
-      avatarText = "M";
-      break;
-  }
-
-  const row = document.createElement("div");
-  row.className = "chat-row " + (side === "left" ? "chat-row-left" : "chat-row-right");
-
-  const avatar = document.createElement("div");
-  avatar.className = "chat-avatar" + (role === "user" ? " chat-avatar-user" : "");
-  avatar.textContent = avatarText;
-
-  const wrapper = document.createElement("div");
-  wrapper.className = "chat-bubble-wrapper";
-
-  if (label) {
-    const labelEl = document.createElement("div");
-    labelEl.className = "chat-label";
-    labelEl.textContent = label;
-    wrapper.appendChild(labelEl);
-  }
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble" + (extraBubbleClass ? " " + extraBubbleClass : "");
-  bubble.innerText = text;
-  wrapper.appendChild(bubble);
-
-  if (side === "left") {
-    row.appendChild(avatar);
-    row.appendChild(wrapper);
-  } else {
-    row.appendChild(wrapper);
-    row.appendChild(avatar);
-  }
-
-  chatLogEl.appendChild(row);
-  chatLogEl.scrollTop = chatLogEl.scrollHeight;
-}
-
-// main send function used by both chat-send and run-button
-function sendTaskFromChat() {
-  const inputText = chatInputEl ? chatInputEl.value.trim() : "";
-
-  if (!inputText) {
-    runStatusEl.textContent = "Please type a task in the chat first.";
+  if (!input) {
+    runStatusEl.textContent = "Please enter a task input.";
     return;
   }
-
-  // Append user message to chat
-  addChatMessage("user", inputText);
-
-  // Clear input box
-  if (chatInputEl) chatInputEl.value = "";
 
   // Reset gating
   animationDone = false;
   animationRunning = false;
   pendingFinalText = null;
 
-  const perfMode = getPerfMode();
-
-  runStatusEl.textContent = `Running governed workflow (${perfMode.toUpperCase()} mode)…`;
+  runStatusEl.textContent = "Running governed workflow…";
 
   const payload = {
-    input: inputText,
-    goal: goalInputEl ? goalInputEl.value.trim() : "",
+    input,
+    goal,
     maxCycles: getMaxCycles(),
     governanceStrictness: getGovernanceStrictness(),
-    perfMode,
+    perfMode: getPerfMode(),
   };
 
-  // Add a system note in the chat
-  addChatSystemMessage(`MCP starting governed workflow in ${perfMode.toUpperCase()} mode…`);
-
   socket.emit("run-workflow", payload);
-}
-
-// --- Run button --------------------------------------------------------------
-
-if (runButtonEl) {
-  runButtonEl.addEventListener("click", () => {
-    sendTaskFromChat();
-  });
-}
-
-// Chat send button + Enter key
-if (chatSendButtonEl) {
-  chatSendButtonEl.addEventListener("click", () => {
-    sendTaskFromChat();
-  });
-}
-
-if (chatInputEl) {
-  chatInputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendTaskFromChat();
-    }
-  });
-}
+});
 
 // --- Logout ------------------------------------------------------------------
 
@@ -278,6 +153,24 @@ if (downloadLedgerBtn) {
   });
 }
 
+// --- Clarification send ------------------------------------------------------
+
+if (clarificationSendBtnEl && clarificationInputEl) {
+  clarificationSendBtnEl.addEventListener("click", () => {
+    if (!activeClarificationCycle) return;
+
+    const answer = clarificationInputEl.value.trim();
+    // Send even if empty to allow MCP to continue
+    socket.emit("clarification-response", {
+      cycle: activeClarificationCycle,
+      answer,
+    });
+
+    clarificationSendBtnEl.disabled = true;
+    clarificationSendBtnEl.textContent = "Sent to MCP";
+  });
+}
+
 // --- Socket telemetry --------------------------------------------------------
 
 socket.on("telemetry", (payload) => {
@@ -309,6 +202,12 @@ socket.on("telemetry", (payload) => {
     case "hemisphere-log":
       appendHemisphereLog(payload.hemisphere, payload.message);
       break;
+    case "moderator-log":
+      appendModeratorLog(payload.message);
+      break;
+    case "clarification-request":
+      showClarificationRequest(payload);
+      break;
     case "ledger":
       updateLedger(payload.entries || []);
       break;
@@ -321,9 +220,11 @@ socket.on("telemetry", (payload) => {
 
 function resetUI() {
   runStatusEl.textContent = "";
+  finalOutputEl.textContent = "";
   analyticalLogEl.innerHTML = "";
   creativeLogEl.innerHTML = "";
   ledgerLogEl.innerHTML = "";
+  if (moderatorLogEl) moderatorLogEl.innerHTML = "";
   rulesListEl.innerHTML = "";
   currentLedger = [];
 
@@ -340,6 +241,23 @@ function resetUI() {
   animationRunning = false;
   animationDone = false;
   pendingFinalText = null;
+
+  // Reset clarification panel
+  activeClarificationCycle = null;
+  if (clarificationQuestionEl) {
+    clarificationQuestionEl.textContent =
+      "No clarification requested yet for this run.";
+  }
+  if (clarificationConfidenceEl) {
+    clarificationConfidenceEl.textContent = "";
+  }
+  if (clarificationInputEl) {
+    clarificationInputEl.value = "";
+  }
+  if (clarificationSendBtnEl) {
+    clarificationSendBtnEl.disabled = true;
+    clarificationSendBtnEl.textContent = "Send Response to MCP";
+  }
 }
 
 function handleCyclePlan(planned) {
@@ -356,8 +274,8 @@ function handleFinalOutput(text) {
 }
 
 function showFinalOutput(text) {
-  // Add final governed output as a green iMessage-style bubble
-  addChatMessage("final", text || "No output returned.");
+  // preserve formatting; CSS uses white-space: pre-wrap;
+  finalOutputEl.innerText = text || "";
   runStatusEl.textContent = "Governed workflow complete.";
 }
 
@@ -433,9 +351,6 @@ function updateMcpStatus(status, detail) {
   } else if (status === "Creative Pass") {
     pillClass = "pill pill-active-creative";
     pillText = "MCP: Creative Pass";
-  } else if (status === "Validator") {
-    pillClass = "pill pill-active-validator";
-    pillText = "MCP: Validator";
   } else if (status === "Finalized") {
     pillClass = "pill pill-finalized";
     pillText = "MCP: Finalized";
@@ -456,7 +371,8 @@ function updateMcpStatus(status, detail) {
 
 function appendHemisphereLog(hemisphere, message) {
   const entry = document.createElement("div");
-  entry.className = "log-entry " + (hemisphere === "A" ? "analytical" : "creative");
+  entry.className =
+    "log-entry " + (hemisphere === "A" ? "analytical" : "creative");
   entry.innerHTML = `<span class="timestamp">${timestamp()}</span>${escapeHtml(
     message
   )}`;
@@ -467,6 +383,57 @@ function appendHemisphereLog(hemisphere, message) {
   } else {
     creativeLogEl.appendChild(entry);
     creativeLogEl.scrollTop = creativeLogEl.scrollHeight;
+  }
+}
+
+// Moderator logs
+
+function appendModeratorLog(message) {
+  if (!moderatorLogEl) return;
+  const entry = document.createElement("div");
+  entry.className = "log-entry moderator";
+  entry.innerHTML = `<span class="timestamp">${timestamp()}</span>${escapeHtml(
+    message
+  )}`;
+  moderatorLogEl.appendChild(entry);
+  moderatorLogEl.scrollTop = moderatorLogEl.scrollHeight;
+}
+
+// Clarification panel
+
+function showClarificationRequest(payload) {
+  const { question, confidence, cycle } = payload || {};
+  activeClarificationCycle = cycle || 1;
+
+  if (clarificationQuestionEl) {
+    clarificationQuestionEl.textContent =
+      question ||
+      "The MCP has requested a brief clarification. Please provide 1–2 sentences so it can proceed.";
+  }
+
+  if (clarificationConfidenceEl) {
+    if (typeof confidence === "number") {
+      let label = "Model confidence: ";
+      if (confidence >= 0.75) {
+        label += `${confidence.toFixed(2)} (high)`;
+      } else if (confidence >= 0.45) {
+        label += `${confidence.toFixed(2)} (medium)`;
+      } else {
+        label += `${confidence.toFixed(2)} (low – asking for clarification)`;
+      }
+      clarificationConfidenceEl.textContent = label;
+    } else {
+      clarificationConfidenceEl.textContent = "";
+    }
+  }
+
+  if (clarificationInputEl) {
+    clarificationInputEl.value = "";
+    clarificationInputEl.focus();
+  }
+  if (clarificationSendBtnEl) {
+    clarificationSendBtnEl.disabled = false;
+    clarificationSendBtnEl.textContent = "Send Response to MCP";
   }
 }
 
@@ -497,17 +464,17 @@ function startFlowAnimation(planned) {
 
   // Animation speed varies with performance mode
   const perf = getPerfMode();
-  let basePerCycle;
+  let basePerHalfCycle;
   if (perf === "real") {
-    basePerCycle = 380; // ms per half-cycle
+    basePerHalfCycle = 380; // ms per half-cycle
   } else if (perf === "fast") {
-    basePerCycle = 230;
+    basePerHalfCycle = 230;
   } else {
-    basePerCycle = 140; // turbo
+    basePerHalfCycle = 140; // turbo
   }
 
   const steps = cycles * 2 + 1;
-  const totalDuration = basePerCycle * steps;
+  const totalDuration = basePerHalfCycle * steps;
   const stepDuration = totalDuration / steps;
 
   animationRunning = true;
