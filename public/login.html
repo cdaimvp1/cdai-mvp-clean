@@ -1,59 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <title>cd\ai – Login</title>
-    <link rel="stylesheet" href="/styles-login.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-</head>
+    <title>cd\ai | Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/login.css?v=004" />
+  </head>
 
-<body>
-    <div class="login-container">
+  <body>
+    <div class="login-shell">
 
-        <!-- HEADER -->
-        <header class="login-header">
-            <img src="/assets/logo-login.png" class="header-logo" alt="cdai logo" />
-            <div class="header-title">cd\ai – Governed Artificial Intelligence</div>
-        </header>
+      <!-- Logo -->
+      <img src="/assets/logo-app.png" class="login-logo" alt="cd\ai logo" />
 
-        <!-- LOGIN CARD -->
-        <div class="login-card">
+      <!-- Tagline immediately under logo -->
+      <div class="login-tagline tagline-overlap">
+        <em>Where governed intelligence meets decision velocity.</em>
+      </div>
 
-            <img src="/assets/logo-login.png" class="login-card-logo" alt="cdai logo" />
+      <!-- Login card -->
+      <div class="login-card">
 
-            <h1 class="login-title">Sign in to continue</h1>
+        <!-- Title (single line, centered) -->
+        <div class="login-title">cd\ai | Governed Dual-Hemisphere MVP</div>
 
-            <form action="/auth/login" method="POST" class="login-form">
-
-                <label class="login-label">Username</label>
-                <input 
-                    type="text" 
-                    name="username" 
-                    class="login-input"
-                    required
-                />
-
-                <label class="login-label">Password</label>
-                <input 
-                    type="password" 
-                    name="password" 
-                    class="login-input"
-                    required
-                />
-
-                <button type="submit" class="login-button">
-                    Sign In
-                </button>
-            </form>
+        <!-- Subtitle -->
+        <div class="login-subtitle">
+          Private prototype. Access is limited to authorized reviewers.
         </div>
 
-        <!-- FOOTER -->
-        <footer class="login-footer">
-            <img src="/assets/logo-login.png" class="footer-logo" />
-            <div class="footer-text">Copyright 2025 | Change Directories, LLC</div>
-            <div class="footer-text">Patent Pending · Confidential MVP Demo</div>
-        </footer>
+        <!-- Password row -->
+        <div class="password-row">
+          <input 
+            id="password-input" 
+            class="password-input" 
+            type="password" 
+            placeholder="Enter access password…" 
+            autocomplete="off"
+          />
+
+          <!-- Blue login button with white > -->
+          <button id="login-button" class="login-button" title="Login">
+            >
+          </button>
+        </div>
+
+        <!-- Error -->
+        <div id="login-error" class="login-error"></div>
+
+      </div> <!-- end login-card -->
+
+      <!-- Footer -->
+      <div class="login-footer">
+        Copyright 2025 | Change Directories, LLC – Patent Pending Confidential MVP Demo
+      </div>
 
     </div>
-</body>
+
+    <script>
+      // Login handler
+      const loginBtn = document.getElementById("login-button");
+      const pwdInput = document.getElementById("password-input");
+      const errorBox = document.getElementById("login-error");
+
+      loginBtn.addEventListener("click", submitLogin);
+      pwdInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submitLogin();
+      });
+
+      function submitLogin() {
+        const password = pwdInput.value.trim();
+        errorBox.textContent = "";
+
+        fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              window.location.href = "/";
+            } else {
+              errorBox.textContent = "Incorrect password.";
+            }
+          })
+          .catch(() => {
+            errorBox.textContent = "Server error. Try again.";
+          });
+      }
+    </script>
+  </body>
 </html>

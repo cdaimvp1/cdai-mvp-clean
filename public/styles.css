@@ -1,401 +1,637 @@
-/* ============================================================
-   GLOBAL BASE — ChatGPT Dark Theme
-   ============================================================ */
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #000000; /* true black page background */
-    color: #E8E8E8;      /* soft white text */
-    overflow: hidden;    /* prevents scrollbars unless panels allow */
+/* ==========================================================================
+   GLOBAL RESET + THEME
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-/* ============================================================
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000000;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Small debug flag (optional) */
+.test-flag {
+  display: none;
+}
+
+/* ==========================================================================
+   APP LAYOUT
+   ========================================================================== */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Main region (between header and footer) */
+.app-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left = 50%. Right = 50%. */
+.left-column {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.right-column {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
    HEADER
-   ============================================================ */
+   ========================================================================== */
+
 .app-header {
-    width: 100%;
-    background: #000000;
-    height: 62px;
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    border-bottom: 1px solid #1B1B1C;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #000000;
+  border-bottom: 1px solid #222222;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .header-logo {
-    height: 34px;
+  height: 40px;
 }
 
-.header-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #FFFFFF;
-    margin-top: 2px;
+.header-title-block {
+  display: flex;
+  flex-direction: column;
 }
 
-.header-subtitle {
-    font-size: 12px;
-    color: #9CA3AF;
-    margin-left: 2px;
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
 }
 
-/* ================= STATUS PILL ================== */
-.status-pill {
-    padding: 4px 10px;
-    font-size: 13px;
-    border-radius: 999px;
-    background: #1F2937;
-    color: #FFFFFF;
-    margin-left: auto;
-    margin-right: 10px;
-}
-.status-label-dynamic { font-weight: 600; }
-
-/* colored modes */
-.status-analytical { background: #2563EB; }
-.status-creative   { background: #A855F7; }
-.status-moderator  { background: #10B981; }
-.status-validator  { background: #F59E0B; }
-.status-final      { background: #4ADE80; }
-.status-error      { background: #EF4444; }
-
-/* ============================================================
-   GOVERNANCE CONTROLS
-   ============================================================ */
-.governance-controls {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    margin-left: 20px;
+.app-subtitle {
+  font-size: 12px;
+  opacity: 0.7;
 }
 
-.gov-label {
-    font-size: 14px;
-    color: #FFFFFF;
-    font-weight: 600;
+/* Header – right side */
+
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 
-/* slider wrappers */
-.slider-block {
-    display: flex;
-    flex-direction: column;
-    width: 160px;
-    color: #FFFFFF;
-    font-size: 12px;
-    margin-top: 4px;
+.governance-controls-label {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
-.slider-block label {
-    margin-bottom: -2px;
+.header-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
-.slider-block .value {
-    text-align: right;
-    margin-top: -14px;
-    margin-bottom: 4px;
-    font-size: 12px;
-    color: #8BA3FF;
+/* Status */
+
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: #111111;
+  border-radius: 999px;
+  border: 1px solid #333333;
 }
 
-/* slider */
+.status-label-static {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.status-label-dynamic {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-idle {
+  color: #aaaaaa;
+}
+.status-analytical {
+  color: #4db1ff;
+}
+.status-moderator {
+  color: #ffdd7c;
+}
+.status-creative {
+  color: #f29bff;
+}
+.status-validator {
+  color: #88ffb4;
+}
+.status-final {
+  color: #cccccc;
+}
+.status-error {
+  color: #ff6b81;
+}
+
+/* Sliders */
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  width: 160px;
+}
+
+.slider-label {
+  font-size: 11px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.slider-with-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-value {
+  font-size: 11px;
+  opacity: 0.75;
+  min-width: 32px;
+  text-align: right;
+}
+
 input[type="range"] {
-    width: 100%;
-    -webkit-appearance: none;
-    height: 4px;
-    background: #2B2D31;
-    border-radius: 2px;
-    outline: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  background: #2e2e2e;
+  border-radius: 2px;
 }
+
 input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    background: #007BFF; /* electric blue */
-    border-radius: 50%;
-    cursor: pointer;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #0a84ff;
+  border-radius: 3px;
 }
 
-/* performance mode buttons */
+/* Performance mode toggle */
+
+.mode-toggle-group {
+  display: flex;
+  gap: 8px;
+}
+
 .mode-btn {
-    padding: 6px 14px;
-    border-radius: 8px;
-    border: 1px solid #2D2F33;
-    background: #111213;
-    color: #E5E7EB;
-    cursor: pointer;
-    font-size: 13px;
-    transition: 0.15s;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #333333;
+  background: #151515;
+  cursor: pointer;
+  font-size: 12px;
+  color: #f9fafb;
 }
+
+.mode-btn:hover {
+  background: #1f2933;
+}
+
 .mode-btn.active {
-    border-color: #3B82F6;
-    background: #1E40AF;
+  background: #0a84ff;
+  border-color: #0a84ff;
+  color: #ffffff;
 }
 
-/* logout icon */
-.logout-btn {
-    margin-left: 14px;
-    cursor: pointer;
-    height: 22px;
-    opacity: 0.8;
-    transition: 0.2s;
-}
-.logout-btn:hover {
-    opacity: 1;
+/* Logout icon button */
+
+.icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 
-/* ============================================================
-   MAIN GRID LAYOUT — LEFT + RIGHT COLUMN
-   ============================================================ */
-.page-body {
-    display: grid;
-    grid-template-columns: 52% 48%; /* balanced split */
-    height: calc(100vh - 62px - 60px);
-    overflow: hidden;
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ============================================================
-   PANEL BASE STYLE — ChatGPT Gray Panels
-   ============================================================ */
+.icon-image {
+  width: 26px;
+  height: 26px;
+  filter: brightness(1.4);
+}
+
+/* Secondary buttons */
+
+.secondary-btn {
+  border-radius: 8px;
+  border: 1px solid #3f3f46;
+  background: #18181b;
+  color: #e5e7eb;
+  font-size: 11px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.secondary-btn.small-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.secondary-btn:hover {
+  background: #27272f;
+}
+
+/* ==========================================================================
+   PANEL BASE STYLE
+   ========================================================================== */
+
 .panel {
-    background: #1F1F22;
-    border: 1px solid #2A2A2D;
-    border-radius: 10px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    color: #FFFFFF;
+  background: #1b1b1f; /* Medium gray */
+  border: 1px solid #2e2e2e;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .panel-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #E5E7EB;
-    margin-bottom: 10px;
-    letter-spacing: 0.3px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-/* ============================================================
-   LEFT COLUMN
-   ============================================================ */
-.left-column {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow: auto;
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* CHAT PANEL */
-.chat-panel {
-    height: 240px;
+.panel-body {
+  margin-top: 8px;
+  flex: 1;
+  overflow: hidden;
 }
 
-#chat-history {
-    background: #111113;
-    border-radius: 8px;
-    padding: 10px;
-    height: 150px;
-    overflow-y: auto;
-    margin-bottom: 10px;
+/* Collapsible chevron */
+
+.chevron-btn {
+  background: #151515;
+  border: 1px solid #333333;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #e5e7eb;
 }
+
+.panel.collapsed .panel-body {
+  display: none;
+}
+
+/* ==========================================================================
+   LEFT COLUMN PANELS
+   ========================================================================== */
+
+/* Conversation panel (top ~40%) */
+
+.conversation-panel {
+  height: 65%;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Chat messages */
 
 .chat-message {
-    margin-bottom: 6px;
-    line-height: 1.35;
-    font-size: 13px;
-    color: #DADADA;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  font-size: 13px;
+  max-width: 80%;
+  white-space: pre-wrap;
 }
 
 .chat-message.user {
-    color: #93C5FD;
+  align-self: flex-end;
+  background: #0a84ff;
+  color: #ffffff;
+}
+
+.chat-message.system {
+  align-self: flex-start;
+  background: #2d2d2d;
+  color: #ffffff;
 }
 
 .chat-message.final {
-    color: #4ADE80;
-    font-weight: 600;
+  align-self: flex-start;
+  background: linear-gradient(135deg, #24c08a, #3ae7a7);
+  color: #002d1b;
 }
+
+/* Chat input row */
 
 .chat-input-row {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
-#chat-input {
-    flex: 1;
-    background: #111113;
-    border: 1px solid #2C2C30;
-    border-radius: 8px;
-    padding: 10px;
-    color: #FFFFFF;
+.chat-input {
+  flex: 1;
+  background: #111111;
+  color: #ffffff;
+  border: 1px solid #333333;
+  padding: 8px;
+  resize: none;
+  height: 50px;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
-.chat-send-btn {
-    height: 36px;
-    width: 36px;
-    background: #1D4ED8;
-    border-radius: 8px;
-    background-image: url('/assets/send-icon.png');
-    background-size: 60%;
-    background-position: center;
-    background-repeat: no-repeat;
-    cursor: pointer;
-    border: none;
+.send-button .icon-image {
+  width: 24px;
+  height: 24px;
 }
 
-/* RESET */
-#chat-reset-button {
-    font-size: 12px;
-    margin-left: auto;
-    cursor: pointer;
-    color: #8CA3FF;
+/* Bottom of left column: goal + parsed rules (side by side) */
+
+.left-bottom-row {
+  display: flex;
+  gap: 12px;
+  height: 35%; /* Remaining height below conversation */
 }
 
-/* GOVERNANCE INPUT ROW */
-.gov-input-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+/* Goal panel */
+
+.goal-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.gov-entry-panel {
-    height: 260px;
+.goal-input {
+  width: 100%;
+  height: 100%;
+  background: #111111;
+  color: #ffffff;
+  border: 1px solid #333333;
+  padding: 10px;
+  resize: none;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
-#goal-input {
-    width: 100%;
-    height: 160px;
-    padding: 10px;
-    background: #111113;
-    border: 1px solid #2C2C30;
-    border-radius: 8px;
-    color: #FFFFFF;
-    resize: none;
+/* Parsed rules panel */
+
+.parsed-rules-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.entry-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
+.rules-body {
+  flex: 1;
+  overflow: hidden;
 }
 
-.gov-submit-btn {
-    width: 36px;
-    height: 36px;
-    background-image: url('/assets/send-icon.png');
-    background-size: 60%;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-radius: 8px;
-    background-color: #1D4ED8;
-    border: none;
-    cursor: pointer;
-}
-
-.gov-clear-btn {
-    width: 36px;
-    height: 36px;
-    background-image: url('/assets/clear-icon.png');
-    background-size: 60%;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-radius: 8px;
-    background-color: #4B5563;
-    border: none;
-    cursor: pointer;
-}
-
-/* PARSED RULES PANEL */
 .rules-list {
-    background: #111113;
-    border-radius: 8px;
-    padding: 10px;
-    height: 210px;
-    overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
-.rule-text { font-size: 13px; }
+.rules-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+/* Rule status dot */
+
 .rule-status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-    display: inline-block;
-}
-.rule-system { color: #38BDF8; }
-.rule-system-generated { color: #7DD3FC; }
-
-/* ============================================================
-   RIGHT COLUMN — Hemispheres + Ledger
-   ============================================================ */
-.right-column {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
-/* hemisphere panels: each half height */
-.hemi-panel {
-    height: calc((100% - 16px - 260px) / 3);
-    overflow-y: auto;
+.rule-status-dot.pending {
+  background: #cccccc;
+}
+.rule-status-dot.in-progress {
+  background: #ffd479;
+}
+.rule-status-dot.passed {
+  background: #6effa6;
 }
 
-#analytical-log,
-#creative-log,
-#moderator-log {
-    flex: 1;
-    background: #111113;
-    padding: 10px;
-    border-radius: 8px;
-    overflow-y: auto;
+/* Origin-based coloring */
+
+.rule-system-generated {
+  color: #4db1ff;
 }
 
-/* ledger takes half */
+.rule-user-clarified {
+  color: #c57dff;
+}
+
+/* ==========================================================================
+   RIGHT COLUMN PANELS
+   ========================================================================== */
+
+/* Right column: top row = 3 hemispheres, bottom = ledger.
+   Both top row and ledger take ~50% each via flex. */
+
+.right-top-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex: 1; /* top half */
+}
+
+.analytical-panel,
+.moderator-panel,
+.creative-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.log-panel .panel-body {
+  overflow-y: auto !important;
+}
+
+.log-scroll {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Ledger panel occupies bottom half of right column */
+
 .ledger-panel {
-    height: calc(50%);
+  flex: 1; /* bottom half */
+  display: flex;
+  flex-direction: column;
+}
+
+.log-entry {
+  font-size: 11px;
+  margin-bottom: 4px;
+  line-height: 1.4;
 }
 
 #ledger-log {
-    flex: 1;
-    background: #111113;
-    padding: 10px;
-    border-radius: 8px;
-    overflow-y: auto;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
-.download-ledger-btn {
-    align-self: flex-end;
-    font-size: 12px;
-    cursor: pointer;
-    color: #8CA3FF;
+
+.log-entry.analytical {
+  border-left: 2px solid #4db1ff;
+  padding-left: 6px;
 }
 
-/* ============================================================
+.log-entry.moderator {
+  border-left: 2px solid #ffdd7c;
+  padding-left: 6px;
+}
+
+.log-entry.creative {
+  border-left: 2px solid #f29bff;
+  padding-left: 6px;
+}
+
+.log-entry.ledger {
+  border-left: 2px solid #6effa6;
+  padding-left: 6px;
+}
+
+.timestamp {
+  display: inline-block;
+  margin-right: 6px;
+  opacity: 0.7;
+}
+
+/* ==========================================================================
    FOOTER
-   ============================================================ */
+   ========================================================================== */
+
 .app-footer {
-    height: 60px;
-    background: #000000;
-    border-top: 1px solid #1B1B1C;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;     /* ← centers horizontally */
+  justify-content: center;
+  padding: 14px 0 12px;
+  background: #000;
+  border-top: 1px solid #222;
+  text-align: center;
 }
+
 
 .footer-logo {
-    height: 24px;
-    opacity: 0.85;
-    margin-bottom: 4px;
+  height: 34px;
+  margin-bottom: 4px;
 }
 
 .footer-text {
-    font-size: 12px;
-    color: #9CA3AF;
-    text-align: center;
+  font-size: 11px;
+  opacity: 0.75;
+}
+/* Remove unintended box around the Clear/Reset button */
+.panel-header-actions {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+.panel-header-actions .icon-button,
+.panel-header-actions .secondary-btn,
+.panel-header-actions button {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.chevron-btn {
+  display: none !important;
 }

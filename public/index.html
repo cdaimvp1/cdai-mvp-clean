@@ -4,42 +4,52 @@
     <meta charset="UTF-8" />
     <title>cd\ai – Governed Artificial Intelligence MVP</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="styles.css" />
+
+    <!-- Main styles -->
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="test-flag"></div>
     <div class="app-shell">
-      <!-- ================= HEADER ================= -->
+      <!-- ========================================================= -->
+      <!-- HEADER -->
+      <!-- ========================================================= -->
       <header class="app-header">
         <div class="header-left">
           <img
-            src="assets/logo-app.png"
+            src="/assets/logo-app.png"
             alt="cd\\ai logo"
             class="header-logo"
-            width="40"
-            height="40"
           />
           <div class="header-title-block">
-            <div class="app-title">cd\ai – Governed Artificial Intelligence MVP</div>
+            <div class="app-title">
+              cd\ai – Governed Artificial Intelligence MVP
+            </div>
             <div class="app-subtitle">
-              Demonstration of real-time governed convergence across analytical and
-              creative hemispheres.
+              Demonstration of real-time governed convergence across analytical
+              and creative hemispheres.
             </div>
           </div>
         </div>
 
-        <div class="header-center">
-          <div class="status-block">
-            <span class="status-label">Status:</span>
-            <span id="status-label-dynamic" class="status-label-dynamic">Idle</span>
-          </div>
+        <div class="header-right">
+          
 
-          <div class="governance-controls-wrapper">
-            <span class="governance-controls-label">Governance Controls</span>
+          <div class="header-controls-row">
+            <div class="status-group">
+              <span class="status-label-static">Status:</span>
+              <span
+                id="status-label-dynamic"
+                class="status-label-dynamic status-idle"
+                >Idle</span
+              >
+            </div>
 
-            <div class="governance-sliders">
-              <div class="slider-group">
-                <label for="strictness-slider" class="slider-label">Strictness</label>
-                <span id="strictness-value" class="slider-value">0.85</span>
+            <div class="slider-group">
+              <label for="strictness-slider" class="slider-label"
+                >Strictness</label
+              >
+              <div class="slider-with-value">
                 <input
                   type="range"
                   id="strictness-slider"
@@ -48,11 +58,13 @@
                   step="0.01"
                   value="0.85"
                 />
+                <span id="strictness-value" class="slider-value">0.85</span>
               </div>
+            </div>
 
-              <div class="slider-group">
-                <label for="cycle-slider" class="slider-label">Max Cycles</label>
-                <span id="cycle-value" class="slider-value">5</span>
+            <div class="slider-group">
+              <label for="cycle-slider" class="slider-label">Max Cycles</label>
+              <div class="slider-with-value">
                 <input
                   type="range"
                   id="cycle-slider"
@@ -61,188 +73,241 @@
                   step="1"
                   value="5"
                 />
+                <span id="cycle-value" class="slider-value">5</span>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div class="header-right">
-          <div class="mode-toggle-group">
-            <button id="mode-real" class="mode-button active">Real</button>
-            <button id="mode-fast" class="mode-button">Fast</button>
-            <button id="mode-turbo" class="mode-button">Turbo</button>
-          </div>
+            <div class="mode-toggle-group">
+  <button id="mode-real" class="mode-btn active">Real</button>
+  <button id="mode-fast" class="mode-btn">Fast</button>
+  <button id="mode-turbo" class="mode-btn">Turbo</button>
+</div>
 
-          <button
-            id="logout-button"
-            class="icon-button logout-button"
-            aria-label="Logout"
-          >
-            <img src="assets/logout-icon.png" alt="Logout" />
-          </button>
+<button
+  id="logout-button"
+  class="icon-button logout-button"
+  title="Logout"
+>
+  <img
+    src="/assets/logout-icon.png"
+    alt="Logout"
+    class="icon-image"
+  />
+</button>
+
+          </div>
         </div>
       </header>
 
-      <!-- ================= MAIN LAYOUT ================= -->
+      <!-- ========================================================= -->
+      <!-- MAIN LAYOUT -->
+      <!-- ========================================================= -->
       <main class="app-main">
-        <!-- ===== LEFT COLUMN ===== -->
+        <!-- ================= LEFT COLUMN (50%) =================== -->
         <section class="left-column">
-          <!-- Governance Conversation -->
+          <!-- Governance Conversation Panel -->
           <div class="panel conversation-panel">
             <div class="panel-header">
-              <h2 class="panel-title">GOVERNANCE CONVERSATION · USER ↔ MCP</h2>
-              <button
-                id="chat-reset-button"
-                class="pill-button"
-                type="button"
-              >
-                Reset Conversation
-              </button>
+              <div class="panel-title">
+                GOVERNANCE CONVERSATION · USER ↔ MCP
+              </div>
+              <div class="panel-header-actions">
+                <button
+                  id="chat-reset-button"
+                  class="secondary-btn small-btn"
+                  type="button"
+                >
+                  <img src="/assets/clear-icon.png" alt="Clear" class="icon-image" />
+
+                </button>
+              </div>
             </div>
 
-            <div id="chat-history" class="chat-history"></div>
-
-            <div class="chat-input-row">
-              <textarea
-                id="chat-input"
-                class="chat-input"
-                placeholder="Describe your task or respond to MCP clarifications…"
-              ></textarea>
-              <button
-                id="chat-send-button"
-                class="icon-button primary"
-                type="button"
-                aria-label="Send message"
-              >
-                <img src="assets/send-icon.png" alt="Send" />
-              </button>
+            <div class="panel-body conversation-body">
+              <div id="chat-history" class="chat-history"></div>
+              <div class="chat-input-row">
+                <textarea
+                  id="chat-input"
+                  class="chat-input"
+                  rows="3"
+                  placeholder="Describe your task or respond to MCP clarifications…"
+                ></textarea>
+                <button
+                  id="chat-send-button"
+                  class="icon-button send-button"
+                  type="button"
+                  title="Send"
+                >
+                  <img
+                    src="/assets/send-icon.png"
+                    alt="Send"
+                    class="icon-image"
+                  />
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Goal & Parsed Rules row -->
-          <div class="bottom-left-row">
+          <!-- Goal + Parsed Rules Row -->
+          <div class="left-bottom-row">
             <!-- Goal & Governance Rules -->
             <div class="panel goal-panel">
               <div class="panel-header">
-                <h2 class="panel-title">GOAL &amp; GOVERNANCE RULES</h2>
+                <div class="panel-title">GOVERNANCE RULES</div>
                 <div class="panel-header-actions">
                   <button
                     id="goal-reset-button"
                     class="icon-button"
                     type="button"
-                    aria-label="Clear governance rules"
+                    title="Clear"
                   >
-                    <img src="assets/clear-icon.png" alt="Clear" />
+                    <img
+                      src="/assets/clear-icon.png"
+                      alt="Clear rules"
+                      class="icon-image"
+                    />
                   </button>
                   <button
                     id="goal-submit-button"
-                    class="icon-button primary"
+                    class="icon-button"
                     type="button"
-                    aria-label="Submit governance rules"
+                    title="Submit governance rules"
                   >
-                    <img src="assets/send-icon.png" alt="Submit" />
+                    <img
+                      src="/assets/send-icon.png"
+                      alt="Submit rules"
+                      class="icon-image"
+                    />
                   </button>
                 </div>
               </div>
 
-              <textarea
-                id="goal-input"
-                class="rules-input"
-                placeholder="Example:
+              <div class="panel-body">
+                <textarea
+                  id="goal-input"
+                  class="goal-input"
+                  placeholder="Example:
 - Must avoid words X, Y, Z
 - Under 140 words
 - Ask for 3–4 artifacts, no speculation on model internals…"
-              ></textarea>
+                ></textarea>
+              </div>
             </div>
 
             <!-- Parsed Governance Rules -->
             <div class="panel parsed-rules-panel">
               <div class="panel-header">
-                <h2 class="panel-title">PARSED GOVERNANCE RULES</h2>
+                <div class="panel-title">PARSED GOVERNANCE RULES</div>
               </div>
-              <ul id="rules-list" class="rules-list"></ul>
+              <div class="panel-body rules-body">
+                <ul id="rules-list" class="rules-list"></ul>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- ===== RIGHT COLUMN ===== -->
+        <!-- ================= RIGHT COLUMN (50%) ================== -->
         <section class="right-column">
-          <div class="top-right-row">
-            <!-- Analytical -->
-            <div class="panel log-panel" id="panel-analytical">
+          <!-- Top half: three log panels side by side -->
+          <div class="right-top-row">
+            <!-- Analytical Hemisphere -->
+            <div class="panel log-panel analytical-panel">
               <div class="panel-header">
-                <h2 class="panel-title">ANALYTICAL HEMISPHERE (A)</h2>
+                <div class="panel-title">ANALYTICAL HEMISPHERE</div>
                 <button
                   class="chevron-btn"
                   type="button"
-                  aria-label="Toggle analytical panel"
-                ></button>
+                  title="Collapse / expand"
+                >
+                  ▾
+                </button>
               </div>
-              <div id="analytical-log" class="log-body"></div>
+              <div class="panel-body log-body">
+                <div id="analytical-log" class="log-scroll"></div>
+              </div>
             </div>
 
             <!-- Moderator & Meta-Governance -->
-            <div class="panel log-panel" id="panel-moderator">
+            <div class="panel log-panel moderator-panel">
               <div class="panel-header">
-                <h2 class="panel-title">MODERATOR &amp; META-GOVERNANCE</h2>
+                <div class="panel-title">MODERATOR</div>
                 <button
                   class="chevron-btn"
                   type="button"
-                  aria-label="Toggle moderator panel"
-                ></button>
+                  title="Collapse / expand"
+                >
+                  ▾
+                </button>
               </div>
-              <div id="moderator-log" class="log-body"></div>
+              <div class="panel-body log-body">
+                <div id="moderator-log" class="log-scroll"></div>
+              </div>
             </div>
 
-            <!-- Creative -->
-            <div class="panel log-panel" id="panel-creative">
+            <!-- Creative Hemisphere -->
+            <div class="panel log-panel creative-panel">
               <div class="panel-header">
-                <h2 class="panel-title">CREATIVE HEMISPHERE (B)</h2>
+                <div class="panel-title">CREATIVE HEMISPHERE</div>
                 <button
                   class="chevron-btn"
                   type="button"
-                  aria-label="Toggle creative panel"
-                ></button>
+                  title="Collapse / expand"
+                >
+                  ▾
+                </button>
               </div>
-              <div id="creative-log" class="log-body"></div>
+              <div class="panel-body log-body">
+                <div id="creative-log" class="log-scroll"></div>
+              </div>
             </div>
           </div>
 
-          <!-- Immutable Ledger -->
-          <div class="panel ledger-panel" id="ledger-panel">
+          <!-- Bottom half: Immutable Governance Ledger -->
+          <div class="panel log-panel ledger-panel" id="ledger-panel">
             <div class="panel-header">
-              <h2 class="panel-title">IMMUTABLE GOVERNANCE LEDGER</h2>
-              <button
-                id="download-ledger-btn"
-                class="pill-button"
-                type="button"
-              >
-                Download JSON
-              </button>
+              <div class="panel-title">IMMUTABLE GOVERNANCE LEDGER</div>
+              <div class="panel-header-actions">
+                <button
+                  id="download-ledger-btn"
+                  class="secondary-btn small-btn"
+                  type="button"
+                >
+                  Download JSON
+                </button>
+                <button
+                  class="chevron-btn"
+                  type="button"
+                  title="Collapse / expand"
+                >
+                  ▾
+                </button>
+              </div>
             </div>
-            <div id="ledger-log" class="log-body ledger-body"></div>
+            <div class="panel-body log-body">
+              <div id="ledger-log" class="log-scroll"></div>
+            </div>
           </div>
         </section>
       </main>
 
-      <!-- ================= FOOTER ================= -->
+      <!-- ========================================================= -->
+      <!-- FOOTER -->
+      <!-- ========================================================= -->
       <footer class="app-footer">
-        <div class="footer-inner">
-          <span class="footer-text">
-            Copyright 2025 | Change Directories, LLC - Patent Pending Confidential
-            MVP Demo
-          </span>
-          <img
-            src="assets/logo-login.png"
-            alt="cd\\ai logo"
-            class="footer-logo"
-            width="120"
-          />
-        </div>
+        <img
+          src="/assets/logo-login.png"
+          alt="cd\\ai footer logo"
+          class="footer-logo"
+        />
+        <span class="footer-text">
+          Copyright 2025 | Change Directories, LLC – Patent Pending
+          Confidential MVP Demo
+        </span>
       </footer>
     </div>
 
+    <!-- Socket.IO and App JS -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
+    <script src="/app.js" defer></script>
   </body>
 </html>
