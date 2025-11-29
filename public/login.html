@@ -3,44 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <title>cd\ai – Governed Demo Login</title>
-
-    <!-- Served from /static because of app.use("/static", express.static(...)) -->
     <link rel="stylesheet" href="/static/styles-login.css" />
     <meta http-equiv="Cache-Control" content="no-store" />
   </head>
 
   <body>
-    <div class="login-page">
-      <div class="login-card">
-        <!-- Logo (served from /assets) -->
-        <img
-          src="/assets/logo-login.png"
-          alt="cd\\ai"
-          class="login-logo"
-        />
+    <div class="login-root">
+      <div class="login-page">
+        <div class="login-card">
+          <img
+            src="/assets/logo-login.png"
+            alt="cd\ai"
+            class="login-logo"
+          />
 
-        <h1 class="login-title">cd\ai Governed Demo</h1>
-        <p class="login-subtitle">
-          Private prototype. Access is limited to authorized reviewers.
-        </p>
+          <h1 class="login-title">cd\ai Governed Demo</h1>
+          <p class="login-subtitle">
+            Private prototype. Access is limited to authorized reviewers.
+          </p>
 
-        <div class="field-label">Access Password</div>
+          <div class="field-label">Access Password</div>
 
-        <input
-          id="password"
-          type="password"
-          class="password-input"
-          placeholder="Enter password"
-          autocomplete="off"
-        />
+          <input
+            id="password"
+            type="password"
+            class="password-input"
+            placeholder="Enter password"
+            autocomplete="off"
+          />
 
-        <button id="login-button" class="login-button">Enter</button>
+          <button id="login-button" class="login-button">
+            Enter
+          </button>
 
-        <p id="login-error" class="login-error"></p>
+          <p id="login-error" class="login-error"></p>
+        </div>
       </div>
 
-      <footer class="login-footer">
-        © 2025 Change Directories LLC · Confidential Demonstration
+      <footer class="app-footer">
+        <img
+          src="/assets/logo-login.png"
+          alt="cd\ai"
+          class="footer-logo"
+        />
+        <div class="footer-text">
+          Copyright 2025 | Change Directories, LLC – Patent Pending Confidential MVP Demo
+        </div>
       </footer>
     </div>
 
@@ -65,7 +73,6 @@
           });
 
           if (res.ok) {
-            // Server sets the session and redirects to the main app
             window.location.href = "/";
           } else {
             errorEl.textContent = "Incorrect password. Please try again.";
