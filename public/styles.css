@@ -158,7 +158,7 @@ body {
 }
 
 /* ============================================================================
-   Textareas & buttons
+   Textareas & run button row
    ========================================================================== */
 
 textarea {
@@ -185,8 +185,6 @@ textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-soft);
 }
-
-/* Run button row */
 
 .card-actions {
   display: flex;
@@ -221,52 +219,195 @@ textarea:focus {
   color: var(--text-secondary);
 }
 
-/* Final output */
+/* ============================================================================
+   Governed Conversation – iMessage-style chat
+   ========================================================================== */
 
-.output-box {
-  min-height: 180px;
-  max-height: 320px;
-  background: #070916;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  padding: 10px 11px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-primary);
-  overflow: auto;
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  height: 360px; /* fixed so page height doesn't move; scroll inside */
 }
 
-/* preserve formatting from the model (paragraphs, newlines) */
-#final-output {
-  white-space: pre-wrap;
-}
-
-/* Scrollbars */
-
-.output-box,
-.log-content,
-.rules-list {
+.chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 2px 6px 2px;
+  margin-bottom: 8px;
   scrollbar-width: thin;
   scrollbar-color: var(--scroll-thumb) var(--scroll-track);
 }
 
-.output-box::-webkit-scrollbar,
-.log-content::-webkit-scrollbar,
-.rules-list::-webkit-scrollbar {
+.chat-log::-webkit-scrollbar {
   width: 6px;
 }
 
-.output-box::-webkit-scrollbar-track,
-.log-content::-webkit-scrollbar-track,
-.rules-list::-webkit-scrollbar-track {
+.chat-log::-webkit-scrollbar-track {
   background: var(--scroll-track);
 }
 
-.output-box::-webkit-scrollbar-thumb,
-.log-content::-webkit-scrollbar-thumb,
-.rules-list::-webkit-scrollbar-thumb {
+.chat-log::-webkit-scrollbar-thumb {
   background: var(--scroll-thumb);
   border-radius: 999px;
+}
+
+/* Rows */
+
+.chat-row {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+
+.chat-row-left {
+  justify-content: flex-start;
+}
+
+.chat-row-right {
+  justify-content: flex-end;
+}
+
+.chat-row-center {
+  justify-content: center;
+}
+
+/* Avatar */
+
+.chat-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1f2238;
+  color: #d5d7f5;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* For user (ML) */
+
+.chat-avatar-user {
+  background: #0a84ff;
+  color: #ffffff;
+}
+
+/* Agent-type avatars could be color-coded later if needed */
+
+/* Bubble */
+
+.chat-bubble-wrapper {
+  max-width: 78%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-label {
+  font-size: 10px;
+  color: #8b90ba;
+  margin-bottom: 2px;
+}
+
+.chat-bubble {
+  padding: 7px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  white-space: pre-wrap; /* preserve newlines from the model */
+}
+
+/* User bubble (left, blue) */
+
+.chat-row-left .chat-bubble {
+  background: #0a84ff;
+  color: #ffffff;
+  border-bottom-left-radius: 4px;
+}
+
+/* System / agent bubble (right, dark) */
+
+.chat-row-right .chat-bubble {
+  background: #181b30;
+  color: #f7f7ff;
+  border-bottom-right-radius: 4px;
+}
+
+/* Final governed output bubble (right, green) */
+
+.chat-bubble-final {
+  background: linear-gradient(135deg, #24c08a, #3ae7a7);
+  color: #041317;
+  border-bottom-right-radius: 4px;
+}
+
+/* System text in center (non-bubble) */
+
+.chat-system-message {
+  font-size: 10px;
+  color: #8b90ba;
+  padding: 2px 0;
+}
+
+/* Chat input row (Option 2 style) */
+
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-input-wrapper {
+  flex: 1;
+  border-radius: 999px;
+  background: #070916;
+  border: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+}
+
+#chat-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  width: 100%;
+  font-family: var(--font-sans);
+}
+
+#chat-input::placeholder {
+  color: #7378a1;
+}
+
+.chat-send-btn {
+  border: none;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6d6dfd, #b65cff);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  transition: transform 0.08s ease, box-shadow 0.1s ease, filter 0.1s ease;
+}
+
+.chat-send-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 11px 26px rgba(0, 0, 0, 0.75);
+}
+
+.chat-send-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
 }
 
 /* ============================================================================
@@ -367,6 +508,11 @@ textarea:focus {
 .pill-active-creative {
   background: rgba(255, 196, 0, 0.18);
   color: #ffd666;
+}
+
+.pill-active-validator {
+  background: rgba(122, 190, 255, 0.18);
+  color: #9ad1ff;
 }
 
 .pill-finalized {
@@ -661,11 +807,6 @@ input[type="range"]::-moz-range-thumb {
   padding-left: 6px;
 }
 
-.log-entry.moderator {
-  border-left: 2px solid #d3b5ff;
-  padding-left: 6px;
-}
-
 .timestamp {
   font-size: 10px;
   color: #8085b3;
@@ -703,85 +844,6 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ============================================================================
-   Clarification panel (MCP ↔ user loop)
-   ========================================================================== */
-
-.clarification-panel {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.clarification-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.clarification-title {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.clarification-confidence {
-  font-size: 10px;
-  color: #a8acda;
-}
-
-.clarification-question {
-  margin: 2px 0 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.clarification-input {
-  width: 100%;
-  min-height: 50px;
-  resize: vertical;
-  background: #070916;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  padding: 6px 8px;
-  font-size: 11px;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.clarification-input::placeholder {
-  color: #7378a1;
-}
-
-.clarification-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-soft);
-}
-
-.clarification-send-btn {
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 5px 12px;
-  font-size: 11px;
-  cursor: pointer;
-  background: #181b30;
-  color: var(--text-secondary);
-  transition: background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
-}
-
-.clarification-send-btn:hover:not(:disabled) {
-  background: #23284a;
-  color: var(--text-primary);
-}
-
-.clarification-send-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* ============================================================================
    Responsive tweaks
    ========================================================================== */
 
@@ -793,5 +855,9 @@ input[type="range"]::-moz-range-thumb {
   .pane-left,
   .pane-right {
     flex: none;
+  }
+
+  .chat-card {
+    height: 320px;
   }
 }

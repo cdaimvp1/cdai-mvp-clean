@@ -9,7 +9,7 @@
 
   <body>
     <div class="app-shell">
-      <!-- LEFT: main interaction area -->
+      <!-- LEFT: chat + goal input -->
       <div class="pane-left">
         <header class="app-header">
           <div class="app-brand">
@@ -30,16 +30,35 @@
           </button>
         </header>
 
-        <section class="card">
-          <h2>Task Input</h2>
-          <textarea
-            id="task-input"
-            placeholder="Describe the task or content to generate..."
-          ></textarea>
+        <!-- Governed Conversation (iMessage-style) -->
+        <section class="card chat-card">
+          <h2>Governed Conversation</h2>
+          <div id="chat-log" class="chat-log">
+            <!-- Chat bubbles will be appended here -->
+          </div>
+
+          <div class="chat-input-row">
+            <div class="chat-input-wrapper">
+              <input
+                id="chat-input"
+                type="text"
+                placeholder="Type a task or reply…"
+                autocomplete="off"
+              />
+            </div>
+            <button
+              id="chat-send-button"
+              class="chat-send-btn"
+              title="Send"
+            >
+              ➤
+            </button>
+          </div>
         </section>
 
+        <!-- Goal / Governance Rules -->
         <section class="card">
-          <h2>Goal / Governance Rules (single field)</h2>
+          <h2>Goal / Governance Rules</h2>
           <textarea
             id="goal-input"
             placeholder="Forbidden Terms (any appearance → violation):
@@ -57,22 +76,16 @@ Structural & Style Constraints:
           ></textarea>
         </section>
 
+        <!-- Run button + status -->
         <section class="card card-actions">
           <button id="run-button">Run Governed Workflow</button>
           <span id="run-status" class="run-status"></span>
-        </section>
-
-        <section class="card">
-          <h2>Final Governed Output</h2>
-          <div id="final-output" class="output-box">
-            <!-- Updated only when both animation and workflow are done -->
-          </div>
         </section>
       </div>
 
       <!-- RIGHT: governance, MCP & logs -->
       <div class="pane-right">
-        <!-- Governance rules -->
+        <!-- Governance rules (parsed from goal input) -->
         <section class="card card-compact" id="governance-rules-panel">
           <h2>Governance Rules</h2>
           <ul id="rules-list" class="rules-list"></ul>
@@ -89,7 +102,7 @@ Structural & Style Constraints:
           </div>
 
           <p class="mcp-caption">
-            Governed output locked after dual-hemisphere convergence.
+            Governed output locks only after dual-hemisphere convergence (or safe fail-stop).
           </p>
 
           <p id="mcp-detail" class="mcp-detail">
@@ -186,7 +199,7 @@ Structural & Style Constraints:
             </div>
           </div>
           <p class="flow-caption">
-            A ⇄ B → ✔ Final — visual animation illustrates governed convergence, while the hemispheres perform real passes in the background.
+            A ⇄ B → ✔ Final — animation mirrors real governed passes in the background.
           </p>
         </section>
 
@@ -214,43 +227,6 @@ Structural & Style Constraints:
           <div class="log-content" id="creative-log"></div>
         </section>
 
-        <!-- Moderator & User Clarifications -->
-        <section class="card log-card" data-panel="moderator">
-          <header class="log-header">
-            <span>Moderator / User Clarifications</span>
-            <button class="chevron-btn" data-target="moderator-log" title="Toggle">
-              <span class="chevron chevron-open">▼</span>
-              <span class="chevron chevron-closed">▶</span>
-            </button>
-          </header>
-          <div class="log-content" id="moderator-log"></div>
-
-          <div class="clarification-panel" id="clarification-panel">
-            <div class="clarification-header">
-              <span class="clarification-title">User Clarification Request</span>
-              <span
-                class="clarification-confidence"
-                id="clarification-confidence"
-              ></span>
-            </div>
-            <p class="clarification-question" id="clarification-question">
-              No clarification requested yet for this run.
-            </p>
-            <textarea
-              id="clarification-input"
-              class="clarification-input"
-              placeholder="Type a brief clarification for the MCP…"
-            ></textarea>
-            <button
-              id="clarification-send"
-              class="clarification-send-btn"
-              disabled
-            >
-              Send Response to MCP
-            </button>
-          </div>
-        </section>
-
         <!-- Immutable Ledger -->
         <section class="card log-card collapsed" data-panel="ledger">
           <header class="log-header">
@@ -273,7 +249,7 @@ Structural & Style Constraints:
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
 
-    <!-- Small helper to keep slider labels in sync; does not affect your main logic -->
+    <!-- Small helper to keep slider labels in sync; does not affect main logic -->
     <script>
       (function () {
         const strictnessSlider = document.getElementById("strictness-slider");
@@ -283,9 +259,7 @@ Structural & Style Constraints:
 
         if (strictnessSlider && strictnessValue) {
           const updateStrictness = () => {
-            strictnessValue.textContent = Number(strictnessSlider.value).toFixed(
-              2
-            );
+            strictnessValue.textContent = Number(strictnessSlider.value).toFixed(2);
           };
           strictnessSlider.addEventListener("input", updateStrictness);
           updateStrictness();
