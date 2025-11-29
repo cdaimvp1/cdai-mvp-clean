@@ -214,6 +214,20 @@ function parseRules(goalText) {
     .map((r) => r.trim())
     .filter(Boolean);
 }
+// -----------------------------------------------------------------------------
+// Serve Front-End (Important for Render)
+// -----------------------------------------------------------------------------
+
+// Serve the index.html for the main app
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Wildcard route — send index.html for any unknown path
+// This is CRITICAL for Render deployments
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // -----------------------------------------------------------------------------
 // Start Server
