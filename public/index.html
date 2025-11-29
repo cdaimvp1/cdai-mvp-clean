@@ -4,285 +4,263 @@
     <meta charset="UTF-8" />
     <title>cd\ai MVP – Governed Dual-Hemisphere Demo</title>
     <link rel="stylesheet" href="/static/styles.css" />
-    <meta http-equiv="Cache-Control" content="no-store" />
   </head>
 
   <body>
     <div class="app-root">
-      <!-- Full-width header -->
+      <!-- ================================================================== -->
+      <!-- HEADER BAR                                                         -->
+      <!-- ================================================================== -->
       <header class="app-header">
         <div class="app-header-left">
-          <div class="app-brand">
-            <img
-              src="/assets/logo-app.png"
-              alt="cd\ai"
-              class="app-logo"
-            />
-            <div class="app-titles">
-              <h1>cd\ai – Governed Dual-Hemisphere MVP</h1>
-              <p class="subtitle">
-                Demonstration of real-time governed convergence across analytical and creative hemispheres.
-              </p>
-            </div>
-          </div>
+          <div class="app-title">cd\ai – Governed Dual-Hemisphere MVP</div>
         </div>
 
         <div class="app-header-right">
-          <span
-            id="mcp-status-pill"
-            class="status-pill status-idle"
-            >Status&nbsp;|&nbsp;Idle</span
-          >
-          <span id="cycle-indicator" class="cycle-indicator">Cycle: –</span>
-
-          <div class="app-header-sliders">
-            <div class="header-slider">
-              <label for="strictness-slider">
-                Strictness
-                <span
-                  class="slider-value"
-                  id="strictness-value"
-                  >0.85</span
-                >
-              </label>
-              <input
-                type="range"
-                id="strictness-slider"
-                min="0.40"
-                max="1.00"
-                step="0.05"
-                value="0.85"
-              />
-            </div>
-
-            <div class="header-slider">
-              <label for="cycle-slider">
-                Cycles
-                <span
-                  class="slider-value"
-                  id="cycle-slider-value"
-                  >5</span
-                >
-              </label>
-              <input
-                type="range"
-                id="cycle-slider"
-                min="1"
-                max="10"
-                step="1"
-                value="5"
-              />
-            </div>
+          <!-- Status pill -->
+          <div class="status-pill">
+            <span class="status-label-fixed">Status |</span>
+            <span
+              id="status-label-dynamic"
+              class="status-label-dynamic status-idle"
+            >
+              Idle
+            </span>
           </div>
 
-          <div class="perf-options">
-            <label class="perf-pill">
-              <input
-                type="radio"
-                name="perf-mode"
-                value="real"
-                checked
-              />
-              <span>Real</span>
-            </label>
-            <label class="perf-pill">
-              <input
-                type="radio"
-                name="perf-mode"
-                value="fast"
-              />
-              <span>Fast</span>
-            </label>
-            <label class="perf-pill">
-              <input
-                type="radio"
-                name="perf-mode"
-                value="turbo"
-              />
-              <span>Turbo</span>
-            </label>
+          <!-- Strictness slider -->
+          <div class="slider-group">
+            <div class="slider-label">
+              Strictness
+              <span id="strictness-value" class="slider-value">0.85</span>
+            </div>
+            <input
+              id="strictness-slider"
+              class="header-slider"
+              type="range"
+              min="0.40"
+              max="1.00"
+              step="0.05"
+              value="0.85"
+            />
           </div>
 
-          <button
-            id="logout-button"
-            class="logout-button"
-            title="End demo session"
-          >
+          <!-- Cycles slider -->
+          <div class="slider-group">
+            <div class="slider-label">
+              Cycles
+              <span id="cycle-value" class="slider-value">5</span>
+            </div>
+            <input
+              id="cycle-slider"
+              class="header-slider"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value="5"
+            />
+          </div>
+
+          <!-- Performance mode pills (no label text, just bubbles) -->
+          <div class="mode-toggle" id="mode-toggle">
+            <button
+              type="button"
+              class="mode-pill active"
+              data-mode-pill="real"
+            >
+              Real
+            </button>
+            <button
+              type="button"
+              class="mode-pill"
+              data-mode-pill="fast"
+            >
+              Fast
+            </button>
+            <button
+              type="button"
+              class="mode-pill"
+              data-mode-pill="turbo"
+            >
+              Turbo
+            </button>
+          </div>
+
+          <!-- Logout -->
+          <button id="logout-button" class="logout-button" type="button">
             Logout
           </button>
         </div>
       </header>
 
-      <!-- Main two-column layout -->
+      <!-- ================================================================== -->
+      <!-- MAIN CONTENT                                                       -->
+      <!-- ================================================================== -->
       <main class="app-main">
-        <div class="app-shell">
-          <!-- LEFT COLUMN -->
-          <div class="pane-left">
-            <!-- Governance Conversation -->
-            <section class="card conversation-card">
-              <div class="conversation-header">
-                <h2>Governance Conversation</h2>
-                <div class="conversation-header-right">
-                  <span id="run-status" class="run-status"></span>
-                  <button
-                    id="conversation-reset"
-                    class="pill-button"
-                    type="button"
-                  >
-                    Reset Conversation
-                  </button>
-                </div>
-              </div>
-
-              <div class="conversation-body">
-                <div id="message-list" class="message-list">
-                  <!-- Initial system message injected by app.js if needed -->
-                </div>
-              </div>
-
-              <div class="conversation-input-bar">
-                <textarea
-                  id="chat-input"
-                  class="chat-input"
-                  rows="1"
-                  placeholder="Describe the task or respond to the MCP…"
-                ></textarea>
+        <!-- LEFT COLUMN: Chat + Governance entry + Parsed rules ------------->
+        <section class="pane-left">
+          <!-- Governance Conversation (Chat) -->
+          <section class="panel chat-panel">
+            <div class="panel-header-row">
+              <div class="chat-header-label">Governance Conversation</div>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span id="run-status" class="slider-label"></span>
                 <button
-                  id="chat-send"
-                  class="chat-send-button"
+                  id="chat-reset-button"
+                  class="chat-reset-button"
                   type="button"
                 >
-                  Send
+                  Reset Conversation
                 </button>
               </div>
-            </section>
-
-            <!-- Governance + Parsed Rules row -->
-            <div class="governance-row">
-              <!-- Goal / Governance Rules -->
-              <section class="card governance-input-card">
-                <div class="governance-header">
-                  <h2>Goal / Governance Rules</h2>
-                  <div class="governance-header-right">
-                    <button
-                      id="governance-reset"
-                      type="button"
-                      class="pill-button"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      id="governance-submit"
-                      type="button"
-                      class="governance-submit-button"
-                    >
-                      Submit Governance
-                    </button>
-                  </div>
-                </div>
-
-                <textarea
-                  id="goal-input"
-                  placeholder="Define the governance objective and constraints here...
-Forbidden or sensitive terms
-Structural & style requirements
-Length or format constraints
-Outcome framing rules (what to avoid / emphasize)
-Artifacts or evidence you expect back..."
-                ></textarea>
-              </section>
-
-              <!-- Parsed Governance Rules -->
-              <section class="card governance-rules-card" id="governance-rules-panel">
-                <h2>Parsed Governance Rules</h2>
-                <ul id="rules-list" class="rules-list"></ul>
-              </section>
             </div>
-          </div>
 
-          <!-- RIGHT COLUMN – logs -->
-          <div class="pane-right">
-            <!-- Analytical Hemisphere log -->
-            <section class="card log-card" data-panel="analytical">
-              <header class="log-header">
-                <span>Analytical Hemisphere</span>
+            <div id="chat-history" class="panel-scroll chat-history"></div>
+
+            <div class="chat-input-row">
+              <textarea
+                id="chat-input"
+                class="chat-input"
+                placeholder="Type your governed task or clarification…"
+              ></textarea>
+              <button
+                id="chat-send-button"
+                class="chat-send-button"
+                type="button"
+                title="Send"
+              >
+                <img
+                  src="/assets/send-icon.png"
+                  alt="Send"
+                  style="width: 20px; height: 20px"
+                />
+              </button>
+            </div>
+          </section>
+
+          <!-- Goal / Governance Rules Submission -->
+          <section class="panel goal-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Goal / Governance Rules</div>
+              <div class="goal-controls">
                 <button
-                  class="chevron-btn"
-                  data-target="analytical-log"
-                  title="Toggle"
+                  id="goal-reset-button"
+                  class="goal-button"
                   type="button"
                 >
-                  <span class="chevron chevron-open">▼</span>
-                  <span class="chevron chevron-closed">▶</span>
+                  Reset
                 </button>
-              </header>
-              <div class="log-content" id="analytical-log"></div>
-            </section>
-
-            <!-- Creative Hemisphere log -->
-            <section class="card log-card" data-panel="creative">
-              <header class="log-header">
-                <span>Creative Hemisphere</span>
                 <button
-                  class="chevron-btn"
-                  data-target="creative-log"
-                  title="Toggle"
+                  id="goal-submit-button"
+                  class="goal-button"
                   type="button"
                 >
-                  <span class="chevron chevron-open">▼</span>
-                  <span class="chevron chevron-closed">▶</span>
+                  Submit
                 </button>
-              </header>
-              <div class="log-content" id="creative-log"></div>
-            </section>
+              </div>
+            </div>
 
-            <!-- Moderator log -->
-            <section class="card log-card" data-panel="moderator">
-              <header class="log-header">
-                <span>Moderator</span>
+            <div class="panel-scroll">
+              <textarea
+                id="goal-textarea"
+                placeholder="Define the governance rules and constraints to lock for this session…"
+              ></textarea>
+            </div>
+          </section>
+
+          <!-- Parsed Governance Rules Display -->
+          <section class="panel rules-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Parsed Governance Rules</div>
+            </div>
+
+            <div class="panel-scroll">
+              <ul id="rules-list" class="rules-list"></ul>
+            </div>
+          </section>
+        </section>
+
+        <!-- RIGHT COLUMN: MCP & Logs ---------------------------------------->
+        <section class="pane-right">
+          <!-- MCP & Cycle -->
+          <section class="panel mcp-panel">
+            <div class="mcp-meta-row">
+              <div class="panel-title">MCP &amp; Cycle</div>
+              <div id="cycle-indicator" class="mcp-cycle-badge">
+                Cycle: –
+              </div>
+            </div>
+            <div id="mcp-detail" class="mcp-detail">
+              Waiting to start governed workflow…
+            </div>
+          </section>
+
+          <!-- Analytical Hemisphere Log -->
+          <section class="panel log-panel" id="analytical-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Analytical Hemisphere</div>
+            </div>
+            <div
+              id="analytical-log"
+              class="panel-scroll log-content"
+            ></div>
+          </section>
+
+          <!-- Moderator Log (moved above Creative) -->
+          <section class="panel log-panel" id="moderator-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Moderator</div>
+            </div>
+            <div
+              id="moderator-log"
+              class="panel-scroll log-content"
+            ></div>
+          </section>
+
+          <!-- Creative Hemisphere Log -->
+          <section class="panel log-panel" id="creative-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Creative Hemisphere</div>
+            </div>
+            <div
+              id="creative-log"
+              class="panel-scroll log-content"
+            ></div>
+          </section>
+
+          <!-- Immutable Ledger -->
+          <section class="panel log-panel" id="ledger-panel">
+            <div class="panel-header-row">
+              <div class="panel-title">Immutable Ledger</div>
+              <div class="ledger-header-right">
                 <button
-                  class="chevron-btn"
-                  data-target="moderator-log"
-                  title="Toggle"
+                  id="download-ledger-btn"
+                  class="ledger-button"
                   type="button"
                 >
-                  <span class="chevron chevron-open">▼</span>
-                  <span class="chevron chevron-closed">▶</span>
+                  Download
                 </button>
-              </header>
-              <div class="log-content" id="moderator-log"></div>
-            </section>
-
-            <!-- Immutable Ledger -->
-            <section class="card log-card collapsed" data-panel="ledger">
-              <header class="log-header">
-                <span>Immutable Ledger</span>
-                <div class="ledger-actions">
-                  <button
-                    id="download-ledger-btn"
-                    class="download-btn"
-                    type="button"
-                  >
-                    Download
-                  </button>
-                  <button
-                    class="chevron-btn"
-                    data-target="ledger-log"
-                    title="Toggle"
-                    type="button"
-                  >
-                    <span class="chevron chevron-open">▼</span>
-                    <span class="chevron chevron-closed">▶</span>
-                  </button>
-                </div>
-              </header>
-              <div class="log-content" id="ledger-log"></div>
-            </section>
-          </div>
-        </div>
+                <button
+                  id="ledger-toggle-btn"
+                  class="chevron-btn"
+                  type="button"
+                >
+                  ▲
+                </button>
+              </div>
+            </div>
+            <div
+              id="ledger-log"
+              class="panel-scroll log-content"
+            ></div>
+          </section>
+        </section>
       </main>
 
-      <!-- Shared footer -->
+      <!-- ================================================================== -->
+      <!-- FOOTER                                                            -->
+      <!-- ================================================================== -->
       <footer class="app-footer">
         <img
           src="/assets/logo-login.png"
@@ -290,11 +268,13 @@ Artifacts or evidence you expect back..."
           class="footer-logo"
         />
         <div class="footer-text">
-          Copyright 2025 | Change Directories, LLC – Patent Pending Confidential MVP Demo
+          Copyright 2025 | Change Directories, LLC – Patent Pending Confidential
+          MVP Demo
         </div>
       </footer>
     </div>
 
+    <!-- Socket & App -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
   </body>

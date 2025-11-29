@@ -1,27 +1,6 @@
-/* ============================================================================
-   Global layout & theme – cd\ai MVP (ChatGPT-style dark on pure black)
+/* ==========================================================================
+   GLOBAL RESET & THEME
    ========================================================================== */
-
-:root {
-  --bg-page: #000000;
-  --bg-panel: rgba(17, 24, 39, 0.9); /* frosted glass effect */
-  --bg-panel-soft: rgba(31, 41, 55, 0.95);
-  --border-subtle: rgba(55, 65, 81, 0.9);
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
-  --accent-blue: #0ea5e9; /* electric blue */
-  --accent-blue-soft: rgba(14, 165, 233, 0.25);
-  --danger: #fb7185;
-  --success: #22c55e;
-  --scroll-track: rgba(15, 23, 42, 0.9);
-  --scroll-thumb: #4b5563;
-  --radius-lg: 14px;
-  --radius-md: 10px;
-  --radius-pill: 999px;
-  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.8);
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-}
 
 *,
 *::before,
@@ -34,635 +13,472 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #000000;
+  color: #ffffff;
+  overflow: hidden; /* keep page height static; scroll inside panels */
 }
 
-body {
-  font-family: var(--font-sans);
-  background: var(--bg-page);
-  color: var(--text-primary);
+/* Scrollbars: track same as background, pill + arrows white */
+::-webkit-scrollbar {
+  width: 10px;
 }
 
-/* ============================================================================
-   Root layout: header (full width), main (two columns), footer
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ffffff;
+}
+
+::-webkit-scrollbar-button {
+  background: #ffffff;
+}
+
+* {
+  scrollbar-color: #ffffff transparent;
+  scrollbar-width: thin;
+}
+
+/* ==========================================================================
+   ROOT APP LAYOUT
    ========================================================================== */
 
 .app-root {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-page);
+  height: 100vh;
 }
 
-.app-main {
-  flex: 1;
-  display: flex;
-  padding: 16px 18px 12px;
-}
-
-/* Two-column shell (keeps your 1.4 / 1 split) */
-
-.app-shell {
-  display: flex;
-  flex: 1;
-  gap: 14px;
-}
-
-.pane-left {
-  flex: 1.4;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pane-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* ============================================================================
-   Header – full-width bar, iOS-style controls on the right
+/* ==========================================================================
+   HEADER BAR
+   - spans full width
+   - left: title
+   - right: status + sliders + mode + logout
    ========================================================================== */
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
-  border-bottom: 1px solid #111827;
-  background: var(--bg-page); /* pure black */
+  padding: 10px 16px;
+  border-bottom: 1px solid #333333;
+  background: #000000;
 }
 
-.app-brand {
+/* Left side (title / logo if used later) */
+
+.app-header-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.app-logo {
-  width: 60px; /* ~1.5x previous size */
-  height: 60px;
-  border-radius: 16px;
-  object-fit: contain;
-  background: #020617;
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.18),
-    0 18px 40px rgba(0, 0, 0, 0.95);
-}
-
-.app-titles h1 {
-  margin: 0;
+.app-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
-.subtitle {
-  margin: 2px 0 0 0;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-/* Header right controls (status, sliders, perf, logout) */
+/* Right side (status + sliders + modes + logout) 
+   This block should visually line up with the right column width (~40%) */
 
 .app-header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 520px; /* roughly right-column width */
-  justify-content: flex-end;
-  flex-shrink: 0;
+  gap: 16px;
 }
+
+/* Status pill
+   "Status |" fixed white; status word colored per state */
 
 .status-pill {
-  font-size: 11px;
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(17, 24, 39, 0.9);
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-/* Status color variants */
-.status-idle {
-  color: #e5e7eb;
-}
-.status-analytical {
-  color: #22d3ee;
-}
-.status-creative {
-  color: #facc15;
-}
-.status-moderator {
-  color: #c4b5fd;
-}
-.status-user {
-  color: #0ea5e9;
-}
-.status-validator {
-  color: #7dd3fc;
-}
-.status-final {
-  color: #22c55e;
-}
-.status-error {
-  color: #fb7185;
-}
-
-.cycle-indicator {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  background: rgba(15, 23, 42, 0.9);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* Header sliders cluster */
-
-.app-header-sliders {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-slider {
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
-}
-
-.header-slider label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #ffffff; /* white labels */
-  margin-bottom: 2px;
-}
-
-.slider-value {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* Range inputs */
-
-input[type="range"] {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 999px;
-  background: #1f2937;
-  outline: none;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  background: #1f2937;
-  border-radius: 999px;
-}
-
-input[type="range"]::-moz-range-track {
-  height: 4px;
-  background: #1f2937;
-  border-radius: 999px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--accent-blue);
-  box-shadow: 0 0 0 4px var(--accent-blue-soft);
-  cursor: pointer;
-  margin-top: -4.5px;
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--accent-blue);
-  box-shadow: 0 0 0 4px var(--accent-blue-soft);
-  cursor: pointer;
-}
-
-/* Performance mode (no label, just bubbles) */
-
-.perf-options {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.perf-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #111827;
-  cursor: pointer;
-  user-select: none;
-  color: var(--text-secondary);
-  font-size: 11px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.perf-pill input[type="radio"] {
-  appearance: none;
-  height: 10px;
-  width: 10px;
-  border-radius: 50%;
-  border: 2px solid #6b7280;
-  background: transparent;
-  transition: background 0.18s ease, border-color 0.18s ease;
-}
-
-.perf-pill input[type="radio"]:checked {
-  border-color: var(--accent-blue);
-  background: var(--accent-blue);
-}
-
-.perf-pill input[type="radio"]:checked + span {
-  color: #e0f2fe;
-  font-weight: 600;
-}
-
-.perf-pill span {
-  transition: color 0.15s ease;
-}
-
-/* Logout button – iOS pill, electric blue border on hover */
-
-.logout-button {
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(17, 24, 39, 0.9);
-  color: var(--text-secondary);
-  font-size: 11px;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
-    transform 0.05s ease;
-}
-
-.logout-button:hover {
-  background: rgba(15, 23, 42, 0.98);
-  color: #e5e7eb;
-  border-color: var(--accent-blue);
-  transform: translateY(-1px);
-}
-
-/* ============================================================================
-   Cards & common elements
-   ========================================================================== */
-
-.card {
-  background: var(--bg-panel);
-  border-radius: var(--radius-lg);
-  padding: 12px 14px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(18px);
-}
-
-.card-compact {
-  padding: 10px 12px;
-}
-
-.card h2 {
-  margin: 0 0 8px 0;
+  padding: 6px 12px;
+  background: #111111;
+  border: 1px solid #3a3a3a;
   font-size: 13px;
+}
+
+.status-label-fixed {
+  color: #ffffff;
+}
+
+.status-label-dynamic {
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #ffffff; /* panel titles are white */
 }
 
-/* Generic textarea styling */
+/* Dynamic colors for status word only */
 
-textarea {
-  width: 100%;
-  min-height: 70px;
-  max-height: 240px;
-  resize: vertical;
-  background: #202123; /* ChatGPT dark input color-ish */
-  border-radius: 10px;
-  border: 1px solid #4b5563;
-  padding: 8px 9px;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-family: var(--font-sans);
-  line-height: 1.32;
+.status-idle {
+  color: #ffffff;
 }
 
-textarea::placeholder {
-  color: #6b7280;
+.status-analytical {
+  color: #4db1ff;
 }
 
-textarea:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 1px var(--accent-blue-soft);
+.status-moderator {
+  color: #ffdd7c;
 }
 
-/* Scrollbars (uniform everywhere) */
-
-textarea,
-.conversation-body,
-.log-content,
-.rules-list {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+.status-creative {
+  color: #f29bff;
 }
 
-textarea::-webkit-scrollbar,
-.conversation-body::-webkit-scrollbar,
-.log-content::-webkit-scrollbar,
-.rules-list::-webkit-scrollbar {
-  width: 6px;
+.status-validator {
+  color: #7bff9a;
 }
 
-textarea::-webkit-scrollbar-track,
-.conversation-body::-webkit-scrollbar-track,
-.log-content::-webkit-scrollbar-track,
-.rules-list::-webkit-scrollbar-track {
-  background: var(--bg-panel); /* match panel background */
+.status-user {
+  color: #ffd4a3;
 }
 
-textarea::-webkit-scrollbar-thumb,
-.conversation-body::-webkit-scrollbar-thumb,
-.log-content::-webkit-scrollbar-thumb,
-.rules-list::-webkit-scrollbar-thumb {
-  background: var(--scroll-thumb);
-  border-radius: 999px;
+.status-final {
+  color: #bfbfbf;
 }
 
-/* Simple pill button used for resets, etc. */
-
-.pill-button {
-  border: 1px solid rgba(148, 163, 184, 0.7);
-  background: rgba(17, 24, 39, 0.96);
-  color: var(--text-secondary);
-  border-radius: var(--radius-pill);
-  padding: 4px 10px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+.status-error {
+  color: #ff6b81;
 }
 
-.pill-button:hover {
-  background: rgba(15, 23, 42, 0.98);
-  color: #e5e7eb;
-  border-color: var(--accent-blue);
+/* Sliders (Strictness / Cycles) */
+
+.header-sliders {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-/* Disabled state */
-
-.button-disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* ============================================================================
-   Governance Conversation – iMessage / ChatGPT hybrid
-   ========================================================================== */
-
-.conversation-card {
+.slider-group {
   display: flex;
   flex-direction: column;
-  min-height: 280px;
-  max-height: 420px;
+  gap: 4px;
 }
 
-.conversation-header {
+.slider-label {
+  font-size: 11px;
+  color: #ffffff;
+}
+
+.slider-value {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.header-slider {
+  width: 140px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #333333;
+  outline: none;
+}
+
+/* Slider track and thumb */
+
+.header-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: #333333;
+}
+
+.header-slider::-moz-range-track {
+  height: 4px;
+  background: #333333;
+}
+
+.header-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 2px;
+  cursor: pointer;
+  margin-top: -5px;
+}
+
+.header-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* Performance mode bubbles (Real / Fast / Turbo) */
+
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-pill {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.mode-pill.active {
+  background: #333333;
+  border-color: #888888;
+}
+
+/* Logout button, iOS-ish flat but boxy */
+
+.logout-button {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   MAIN CONTENT LAYOUT (left ~60% / right ~40%)
+   ========================================================================== */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden; /* keep page static, scroll within panes/panels */
+}
+
+/* Left pane ~60% */
+
+.pane-left {
+  flex: 0 0 60%;
+  max-width: 60%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Right pane ~40% */
+
+.pane-right {
+  flex: 0 0 40%;
+  max-width: 40%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   GENERIC PANEL (boxy, frosted grey, glass-ish)
+   ========================================================================== */
+
+.panel {
+  background: rgba(110, 110, 110, 0.18); /* glassy grey */
+  backdrop-filter: blur(14px);
+  border: 1px solid #3a3a3a;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  margin-bottom: 6px;
 }
 
-.conversation-header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.run-status {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+/* Shared scroll region inside panels */
 
-/* Scrollable chat region, height fixed so page layout stays static */
-
-.conversation-body {
-  margin-top: 8px;
+.panel-scroll {
   flex: 1;
-  min-height: 160px;
-  max-height: 280px;
-  background: #050816;
-  border-radius: 12px;
-  border: 1px solid #111827;
-  padding: 10px 10px 8px;
   overflow-y: auto;
 }
 
-.message-list {
+/* Generic small button style used inside panels */
+
+.panel-button {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   GOVERNANCE CONVERSATION (Chat – iPhone-style bubbles)
+   ========================================================================== */
+
+.chat-panel {
+  min-height: 220px;
+}
+
+.chat-header-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chat-reset-button {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Chat history area */
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  padding-right: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-/* Message rows */
+/* Chat message bubbles (user / system / final) */
 
-.message-row {
-  display: flex;
-}
-
-.message-row.user {
-  justify-content: flex-end;
-}
-
-.message-row.system {
-  justify-content: flex-start;
-}
-
-.message-row.center {
-  justify-content: center;
-}
-
-.message-bubble {
+.chat-message {
   max-width: 78%;
-  padding: 8px 11px 6px;
-  border-radius: 18px;
-  font-size: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 16px; /* bubbles stay rounded */
+  font-size: 13px;
   line-height: 1.4;
-  position: relative;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.75);
-}
-
-.bubble-user {
-  background: #202123; /* same feel as ChatGPT input/background */
-  color: #f9fafb;
-  border-bottom-right-radius: 4px;
-}
-
-.bubble-system {
-  background: #111827;
-  color: #e5e7eb;
-  border-bottom-left-radius: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
-}
-
-/* Final governed output bubble (green highlight) */
-
-.bubble-final {
-  background: linear-gradient(135deg, #22c55e, #4ade80);
-  color: #022c22;
-  border-bottom-right-radius: 4px;
-}
-
-/* Small system line in center (no bubble) */
-
-.chat-system-message {
-  font-size: 10px;
-  color: var(--text-secondary);
-  padding: 2px 0;
-}
-
-/* Message text + meta */
-
-.message-text {
-  white-space: pre-wrap;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
-.message-meta {
-  margin-top: 4px;
-  font-size: 10px;
-  opacity: 0.75;
+.chat-message.user {
+  align-self: flex-end;
+  background: #0a84ff;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
 }
 
-/* Input bar – behaves like ChatGPT (textarea grows a bit) */
+.chat-message.system {
+  align-self: flex-start;
+  background: #222222;
+  color: #ffffff;
+  border-bottom-left-radius: 4px;
+}
 
-.conversation-input-bar {
-  margin-top: 10px;
+.chat-message.final {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #24c08a, #3ae7a7);
+  color: #041317;
+  border-bottom-left-radius: 4px;
+}
+
+/* Chat input row (boxy) */
+
+.chat-input-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
-  padding: 7px 8px;
-  border-radius: 999px;
-  background: #111827;
-  border: 1px solid #1f2937;
 }
 
 .chat-input {
   flex: 1;
-  border: none;
-  background: transparent;
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 8px 10px;
   font-size: 13px;
-  color: var(--text-primary);
+  resize: none;             /* behaves like iMessage text area */
   outline: none;
-  resize: none;
-  max-height: 120px; /* grows but limited */
-  min-height: 22px;
-  line-height: 1.4;
-  font-family: var(--font-sans);
+  max-height: 120px;        /* scrollbar only when necessary */
+  overflow-y: auto;
 }
 
 .chat-input::placeholder {
-  color: #6b7280;
+  color: #d0d0d0;
 }
 
-/* As textarea scrolls, scrollbars match others (handled above) */
+/* Send icon button (no text, just an icon like ➤ or similar) */
 
 .chat-send-button {
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 999px;
-  padding: 7px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  background: linear-gradient(90deg, var(--accent-blue), #38bdf8);
+  background: #0a84ff;
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.9);
-  transition: transform 0.08s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  cursor: pointer;
+  font-size: 18px;
 }
 
-.chat-send-button:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.95);
-}
-
-.chat-send-button:active {
-  transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8);
-}
-
-/* ============================================================================
-   Governance & Parsed Rules row (side-by-side)
+/* ==========================================================================
+   GOAL / GOVERNANCE RULES SUBMISSION PANEL
+   - larger default height
    ========================================================================== */
 
-.governance-row {
-  display: flex;
-  gap: 12px;
-}
-
-.governance-input-card,
-.governance-rules-card {
-  flex: 1; /* 50/50 split, total width matches conversation card */
-}
-
-.governance-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.governance-header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.governance-submit-button {
-  border: none;
-  background: linear-gradient(90deg, var(--accent-blue), #38bdf8);
-  color: white;
+.goal-panel textarea {
+  width: 100%;
+  min-height: 200px;  /* doubled base height */
+  max-height: 360px;
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 8px 10px;
   font-size: 12px;
-  padding: 6px 16px;
-  border-radius: var(--radius-pill);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  resize: vertical;
+  overflow-y: auto;
+}
+
+.goal-panel textarea::placeholder {
+  color: #d0d0d0;
+}
+
+.goal-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.goal-button {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  padding: 6px 12px;
+  width: 98px;          /* Reset & Submit same width */
+  font-size: 12px;
   cursor: pointer;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.8);
-  transition: transform 0.06s ease, box-shadow 0.1s ease, filter 0.1s ease;
 }
 
-.governance-submit-button:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.95);
-}
+/* ==========================================================================
+   GOVERNANCE RULES DISPLAY PANEL (parsed rules)
+   - larger default height
+   ========================================================================== */
 
-/* Governance rules list */
+.rules-panel {
+  min-height: 200px; /* doubled base height */
+}
 
 .rules-list {
   list-style: none;
   padding: 0;
-  margin: 2px 0 0 0;
-  max-height: 220px;
+  margin: 4px 0 0 0;
+  max-height: 100%;
   overflow-y: auto;
   font-size: 11px;
 }
@@ -670,7 +486,7 @@ textarea::-webkit-scrollbar-thumb,
 .rules-list li {
   display: flex;
   align-items: flex-start;
-  gap: 7px;
+  gap: 8px;
   padding: 3px 0;
 }
 
@@ -679,186 +495,174 @@ textarea::-webkit-scrollbar-thumb,
   height: 8px;
   border-radius: 50%;
   margin-top: 4px;
-  background: #4b5563;
+  background: #cccccc;
 }
 
 .rule-status-dot.pending {
-  background: #4b5563;
+  background: #cccccc;
 }
 
 .rule-status-dot.in-progress {
-  background: #facc15;
+  background: #ffd479;
 }
 
 .rule-status-dot.passed {
-  background: #22c55e;
+  background: #7bff9a;
 }
 
 .rule-text {
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
-/* ============================================================================
-   Logs & ledger (collapsible) – right column
+/* ==========================================================================
+   MCP & CYCLE PANEL (right column)
    ========================================================================== */
 
-.log-card {
-  padding-top: 8px;
-  padding-bottom: 8px;
+.mcp-panel {
+  min-height: 90px;
 }
 
-.log-header {
+.mcp-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mcp-cycle-badge {
   font-size: 11px;
-  color: var(--text-secondary);
+  padding: 4px 8px;
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
 }
 
-.chevron-btn {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
+.mcp-detail {
+  font-size: 11px;
+  color: #ffffff;
+  opacity: 0.85;
 }
 
-.chevron {
-  font-size: 10px;
-}
+/* ==========================================================================
+   LOG PANELS: ANALYTICAL / MODERATOR / CREATIVE / LEDGER
+   (right column, boxy with scroll)
+   ========================================================================== */
 
-/* default: open */
-.log-card .chevron-closed {
-  display: none;
+.log-panel {
+  min-height: 120px;
 }
-
-.log-card.collapsed .chevron-open {
-  display: none;
-}
-
-.log-card.collapsed .chevron-closed {
-  display: inline;
-}
-
-/* Collapsible body */
 
 .log-content {
-  margin-top: 6px;
-  max-height: 160px;
+  flex: 1;
   overflow-y: auto;
   font-size: 11px;
 }
 
-.log-card.collapsed .log-content {
-  display: none;
+.log-entry {
+  padding: 3px 4px;
+  margin-bottom: 2px;
+  color: #ffffff;
 }
 
-.log-entry {
-  padding: 3px 0;
-  color: var(--text-secondary);
-}
+/* Left border colors by type */
 
 .log-entry.analytical {
-  border-left: 2px solid #22d3ee;
-  padding-left: 6px;
-}
-
-.log-entry.creative {
-  border-left: 2px solid #facc15;
+  border-left: 2px solid #4db1ff;
   padding-left: 6px;
 }
 
 .log-entry.moderator {
-  border-left: 2px solid #c4b5fd;
+  border-left: 2px solid #ffdd7c;
+  padding-left: 6px;
+}
+
+.log-entry.creative {
+  border-left: 2px solid #f29bff;
   padding-left: 6px;
 }
 
 .log-entry.ledger {
-  border-left: 2px solid #22c55e;
+  border-left: 2px solid #7bff9a;
   padding-left: 6px;
 }
 
 .timestamp {
   font-size: 10px;
-  color: #6b7280;
-  margin-right: 6px;
+  opacity: 0.7;
+  margin-right: 4px;
 }
 
-/* Ledger actions */
+/* Ledger header (download + collapse) */
 
-.ledger-actions {
+.ledger-header-right {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.download-btn {
-  border: none;
+.ledger-button {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
   font-size: 10px;
-  padding: 4px 9px;
-  border-radius: var(--radius-pill);
-  background: #111827;
-  color: var(--text-secondary);
+  padding: 4px 8px;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.download-btn:hover {
-  background: #1f2937;
-  color: var(--text-primary);
+.chevron-btn {
+  border: 1px solid #444444;
+  background: #151515;
+  color: #ffffff;
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
 }
 
-/* ============================================================================
-   Footer – same on main app & login
+/* Collapsed state (for any log-panel) */
+
+.log-panel.collapsed .log-content {
+  display: none;
+}
+
+/* ==========================================================================
+   FOOTER
+   - matches login footer style: centered logo + text
    ========================================================================== */
 
 .app-footer {
-  padding: 14px 18px 20px;
+  border-top: 1px solid #333333;
+  padding: 10px 0 8px;
   text-align: center;
-  background: var(--bg-page); /* pure black */
-  color: var(--text-secondary);
+  background: #000000;
 }
 
 .footer-logo {
-  display: block;
-  margin: 0 auto 8px;
-  width: 220px; /* 3–4x bigger than before */
-  max-width: 60vw;
-  height: auto;
+  height: 34px;
+  margin-bottom: 4px;
 }
 
 .footer-text {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: #ffffff;
+  opacity: 0.7;
 }
 
-/* ============================================================================
-   Responsive tweaks
+/* ==========================================================================
+   RESPONSIVE
    ========================================================================== */
 
 @media (max-width: 1080px) {
   .app-main {
-    padding: 12px;
-  }
-
-  .app-shell {
     flex-direction: column;
   }
 
   .pane-left,
   .pane-right {
-    flex: none;
-  }
-
-  .governance-row {
-    flex-direction: column;
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 
   .app-header-right {
-    max-width: 100%;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
