@@ -24,15 +24,34 @@ const ledgerLogEl = document.getElementById("ledger-log");
 const collapsibleCards = document.querySelectorAll(".log-card");
 const downloadLedgerBtn = document.getElementById("download-ledger-btn");
 const logoutButtonEl = document.getElementById("logout-button");
+const perfModeInputs = document.querySelectorAll('input[name="perf-mode"]');
+const strictnessSliderEl = document.getElementById("strictness-slider");
+const cycleSliderEl = document.getElementById("cycle-slider");
 
 // Animation + output gating state
 let plannedCycles = 0;
 let animationRunning = false;
 let animationDone = false;
 let pendingFinalText = null;
+let currentPerfMode = "real";
 
 // Ledger state
 let currentLedger = [];
+
+// --- Helpers for perf mode ---------------------------------------------------
+
+function getSelectedPerfMode() {
+  for (const input of perfModeInputs) {
+    if (input.checked) return input.value;
+  }
+  return "real";
+}
+
+function perfModeLabel(mode) {
+  if (mode === "fast") return "Fast";
+  if (mode === "turbo") return "Turbo";
+  return "Real";
+}
 
 // --- Run button --------------------------------------------------------------
 
@@ -45,19 +64,26 @@ runButtonEl.addEventListener("click", () => {
     return;
   }
 
+  const maxCycles = Number(cycleSliderEl?.value || 5);
+  const governanceStrictness = Number(strictnessSliderEl?.value || 0.85);
+  const mode = getSelectedPerfMode();
+  currentPerfMode = mode;
+
   // Reset gating
   animationDone = false;
   animationRunning = false;
   pendingFinalText = null;
 
-  runStatusEl.textContent = "Running governed workflow...";
+  runStatusEl.textContent = `Running governed workflow in ${perfModeLabel(
+    mode
+  )} mode…`;
 
-  // If you later add sliders for maxCycles / strictness, pass them here
   const payload = {
     input,
     goal,
-    // maxCycles: Number(document.getElementById("cycle-slider")?.value || 5),
-    // governanceStrictness: Number(document.getElementById("strictness-slider")?.value || 0.85),
+    maxCycles,
+    governanceStrictness,
+    mode,
   };
 
   socket.emit("run-workflow", payload);
@@ -286,7 +312,9 @@ function updateMcpStatus(status, detail) {
 function appendHemisphereLog(hemisphere, message) {
   const entry = document.createElement("div");
   entry.className = "log-entry " + (hemisphere === "A" ? "analytical" : "creative");
-  entry.innerHTML = `<span class="timestamp">${timestamp()}</span>${escapeHtml(message)}`;
+  entry.innerHTML = `<span class="timestamp">${timestamp()}</span>${escapeHtml(
+    message
+  )}`;
 
   if (hemisphere === "A") {
     analyticalLogEl.appendChild(entry);
@@ -308,7 +336,9 @@ function updateLedger(entries) {
     div.className = "log-entry ledger";
     div.innerHTML = `<span class="timestamp">${escapeHtml(
       e.timestamp
-    )}</span>[${escapeHtml(e.stage)} – cycle ${e.cycle}] ${escapeHtml(e.summary)}`;
+    )}</span>[${escapeHtml(e.stage)} – cycle ${
+      e.cycle
+    }] ${escapeHtml(e.summary)}`;
     ledgerLogEl.appendChild(div);
   });
 
@@ -319,7 +349,17 @@ function updateLedger(entries) {
 
 function startFlowAnimation(planned) {
   const cycles = Math.max(1, planned || 1);
-  const totalDuration = 2200; // ms
+
+  // Speed based on performance mode
+  let totalDuration;
+  if (currentPerfMode === "fast") {
+    totalDuration = 1400;
+  } else if (currentPerfMode === "turbo") {
+    totalDuration = 700;
+  } else {
+    totalDuration = 2200;
+  }
+
   const steps = cycles * 2 + 1;
   const stepDuration = totalDuration / steps;
 

@@ -193,6 +193,7 @@ Structural & Style Constraints:
             <span>Analytical Hemisphere</span>
             <button class="chevron-btn" data-target="analytical-log" title="Toggle">
               <span class="chevron chevron-open">▼</span>
+              <span class="chevron chevron-closed">▶</span>
             </button>
           </header>
           <div class="log-content" id="analytical-log"></div>
@@ -204,6 +205,7 @@ Structural & Style Constraints:
             <span>Creative Hemisphere</span>
             <button class="chevron-btn" data-target="creative-log" title="Toggle">
               <span class="chevron chevron-open">▼</span>
+              <span class="chevron chevron-closed">▶</span>
             </button>
           </header>
           <div class="log-content" id="creative-log"></div>
@@ -218,6 +220,7 @@ Structural & Style Constraints:
                 Download
               </button>
               <button class="chevron-btn" data-target="ledger-log" title="Toggle">
+                <span class="chevron chevron-open">▼</span>
                 <span class="chevron chevron-closed">▶</span>
               </button>
             </div>
@@ -230,7 +233,7 @@ Structural & Style Constraints:
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
 
-    <!-- Small helper to keep slider labels in sync; does not affect your main logic -->
+    <!-- Slider label sync helper -->
     <script>
       (function () {
         const strictnessSlider = document.getElementById("strictness-slider");
