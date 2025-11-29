@@ -24,7 +24,8 @@ const ledgerLogEl = document.getElementById("ledger-log");
 const collapsibleCards = document.querySelectorAll(".log-card");
 const downloadLedgerBtn = document.getElementById("download-ledger-btn");
 const logoutButtonEl = document.getElementById("logout-button");
-const perfModeInputs = document.querySelectorAll('input[name="perf-mode"]');
+
+// sliders + perf mode
 const strictnessSliderEl = document.getElementById("strictness-slider");
 const cycleSliderEl = document.getElementById("cycle-slider");
 
@@ -33,24 +34,31 @@ let plannedCycles = 0;
 let animationRunning = false;
 let animationDone = false;
 let pendingFinalText = null;
-let currentPerfMode = "real";
 
 // Ledger state
 let currentLedger = [];
 
-// --- Helpers for perf mode ---------------------------------------------------
+// ---- Helpers to read controls ----------------------------------------------
 
-function getSelectedPerfMode() {
-  for (const input of perfModeInputs) {
-    if (input.checked) return input.value;
-  }
-  return "real";
+function getGovernanceStrictness() {
+  if (!strictnessSliderEl) return 0.85;
+  const v = Number(strictnessSliderEl.value);
+  return Number.isFinite(v) ? v : 0.85;
 }
 
-function perfModeLabel(mode) {
-  if (mode === "fast") return "Fast";
-  if (mode === "turbo") return "Turbo";
-  return "Real";
+function getMaxCycles() {
+  if (!cycleSliderEl) return 5;
+  const v = parseInt(cycleSliderEl.value, 10);
+  if (!Number.isFinite(v)) return 5;
+  return Math.min(10, Math.max(1, v));
+}
+
+function getPerfMode() {
+  const radios = document.querySelectorAll("input[name='perf-mode']");
+  for (const r of radios) {
+    if (r.checked) return r.value || "real";
+  }
+  return "real";
 }
 
 // --- Run button --------------------------------------------------------------
@@ -64,26 +72,19 @@ runButtonEl.addEventListener("click", () => {
     return;
   }
 
-  const maxCycles = Number(cycleSliderEl?.value || 5);
-  const governanceStrictness = Number(strictnessSliderEl?.value || 0.85);
-  const mode = getSelectedPerfMode();
-  currentPerfMode = mode;
-
   // Reset gating
   animationDone = false;
   animationRunning = false;
   pendingFinalText = null;
 
-  runStatusEl.textContent = `Running governed workflow in ${perfModeLabel(
-    mode
-  )} mode…`;
+  runStatusEl.textContent = "Running governed workflow…";
 
   const payload = {
     input,
     goal,
-    maxCycles,
-    governanceStrictness,
-    mode,
+    maxCycles: getMaxCycles(),
+    governanceStrictness: getGovernanceStrictness(),
+    perfMode: getPerfMode(),
   };
 
   socket.emit("run-workflow", payload);
@@ -165,7 +166,7 @@ socket.on("telemetry", (payload) => {
       updateMcpStatus(payload.status, payload.detail);
       break;
     case "cycle-update":
-      // animation handles visual cycle
+      // animation uses cycle-plan; nothing extra needed
       break;
     case "hemisphere-log":
       appendHemisphereLog(payload.hemisphere, payload.message);
@@ -218,7 +219,8 @@ function handleFinalOutput(text) {
 }
 
 function showFinalOutput(text) {
-  finalOutputEl.textContent = text;
+  // preserve formatting; CSS uses white-space: pre-wrap;
+  finalOutputEl.innerText = text || "";
   runStatusEl.textContent = "Governed workflow complete.";
 }
 
@@ -288,6 +290,9 @@ function updateMcpStatus(status, detail) {
   } else if (status === "Analytical Pass") {
     pillClass = "pill pill-active-analytical";
     pillText = "MCP: Analytical Pass";
+  } else if (status === "Moderator") {
+    pillClass = "pill pill-active-moderator";
+    pillText = "MCP: Moderator";
   } else if (status === "Creative Pass") {
     pillClass = "pill pill-active-creative";
     pillText = "MCP: Creative Pass";
@@ -336,9 +341,9 @@ function updateLedger(entries) {
     div.className = "log-entry ledger";
     div.innerHTML = `<span class="timestamp">${escapeHtml(
       e.timestamp
-    )}</span>[${escapeHtml(e.stage)} – cycle ${
-      e.cycle
-    }] ${escapeHtml(e.summary)}`;
+    )}</span>[${escapeHtml(e.stage)} – cycle ${e.cycle}] ${escapeHtml(
+      e.summary
+    )}`;
     ledgerLogEl.appendChild(div);
   });
 
@@ -350,17 +355,19 @@ function updateLedger(entries) {
 function startFlowAnimation(planned) {
   const cycles = Math.max(1, planned || 1);
 
-  // Speed based on performance mode
-  let totalDuration;
-  if (currentPerfMode === "fast") {
-    totalDuration = 1400;
-  } else if (currentPerfMode === "turbo") {
-    totalDuration = 700;
+  // Animation speed varies with performance mode
+  const perf = getPerfMode();
+  let basePerCycle;
+  if (perf === "real") {
+    basePerCycle = 380; // ms per half-cycle
+  } else if (perf === "fast") {
+    basePerCycle = 230;
   } else {
-    totalDuration = 2200;
+    basePerCycle = 140; // turbo
   }
 
   const steps = cycles * 2 + 1;
+  const totalDuration = basePerCycle * steps;
   const stepDuration = totalDuration / steps;
 
   animationRunning = true;

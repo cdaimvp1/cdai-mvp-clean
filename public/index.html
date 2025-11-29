@@ -88,6 +88,10 @@ Structural & Style Constraints:
             </div>
           </div>
 
+          <p class="mcp-caption">
+            Governed output locked after dual-hemisphere convergence.
+          </p>
+
           <p id="mcp-detail" class="mcp-detail">
             Waiting to start governed workflow…
           </p>
@@ -130,26 +134,25 @@ Structural & Style Constraints:
                   <input
                     type="radio"
                     name="perf-mode"
-                    id="perf-real"
                     value="real"
                     checked
                   />
                   <span>Real</span>
                 </label>
+
                 <label class="perf-pill">
                   <input
                     type="radio"
                     name="perf-mode"
-                    id="perf-fast"
                     value="fast"
                   />
                   <span>Fast</span>
                 </label>
+
                 <label class="perf-pill">
                   <input
                     type="radio"
                     name="perf-mode"
-                    id="perf-turbo"
                     value="turbo"
                   />
                   <span>Turbo</span>
@@ -233,7 +236,7 @@ Structural & Style Constraints:
     <script src="/socket.io/socket.io.js"></script>
     <script src="/static/app.js"></script>
 
-    <!-- Slider label sync helper -->
+    <!-- Small helper to keep slider labels in sync; does not affect your main logic -->
     <script>
       (function () {
         const strictnessSlider = document.getElementById("strictness-slider");

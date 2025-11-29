@@ -236,6 +236,11 @@ textarea:focus {
   overflow: auto;
 }
 
+/* preserve formatting from the model (paragraphs, newlines) */
+#final-output {
+  white-space: pre-wrap;
+}
+
 /* Scrollbars */
 
 .output-box,
@@ -354,6 +359,11 @@ textarea:focus {
   color: #57d8ff;
 }
 
+.pill-active-moderator {
+  background: rgba(173, 129, 255, 0.18);
+  color: #d3b5ff;
+}
+
 .pill-active-creative {
   background: rgba(255, 196, 0, 0.18);
   color: #ffd666;
@@ -364,8 +374,14 @@ textarea:focus {
   color: #2dd58f;
 }
 
+.mcp-caption {
+  margin: 4px 0 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .mcp-detail {
-  margin: 4px 0 6px 0;
+  margin: 2px 0 6px 0;
   font-size: 11px;
   color: var(--text-secondary);
 }
@@ -432,7 +448,9 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* Performance mode */
+/* ================================
+   Performance Mode Segmented Toggle
+   ================================ */
 
 .perf-mode {
   display: flex;
@@ -449,38 +467,47 @@ input[type="range"]::-moz-range-thumb {
 
 .perf-options {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 18px;
+  margin-top: 8px;
 }
 
 .perf-pill {
-  position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  font-size: 10px;
-  background: #14172a;
-  color: var(--text-secondary);
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: #11131f;
   cursor: pointer;
+  user-select: none;
+  color: #c9cbe2;
+  font-size: 13px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.perf-pill input {
-  display: none;
+.perf-pill input[type="radio"] {
+  appearance: none;
+  height: 11px;
+  width: 11px;
+  border-radius: 50%;
+  border: 2px solid #555a78;
+  background: transparent;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.perf-pill input[type="radio"]:checked {
+  border-color: #ffcc66;
+  background: #ffcc66;
+}
+
+.perf-pill input[type="radio"]:checked + span {
+  color: #ffe6a3;
+  font-weight: 600;
 }
 
 .perf-pill span {
-  pointer-events: none;
-}
-
-.perf-pill input:checked + span {
-  color: white;
-}
-
-.perf-pill input:checked ~ span,
-.perf-pill input:checked + span {
-  background: linear-gradient(90deg, #6d6dfd, #b65cff);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
+  transition: color 0.15s ease;
 }
 
 /* ============================================================================
@@ -594,6 +621,19 @@ input[type="range"]::-moz-range-thumb {
   font-size: 10px;
 }
 
+/* default: open */
+.log-card .chevron-closed {
+  display: none;
+}
+
+.log-card.collapsed .chevron-open {
+  display: none;
+}
+
+.log-card.collapsed .chevron-closed {
+  display: inline;
+}
+
 .log-content {
   margin-top: 6px;
   max-height: 160px;
@@ -630,14 +670,6 @@ input[type="range"]::-moz-range-thumb {
 /* collapsed state */
 
 .log-card.collapsed .log-content {
-  display: none;
-}
-
-.log-card.collapsed .chevron-open {
-  display: none;
-}
-
-.log-card:not(.collapsed) .chevron-closed {
   display: none;
 }
 

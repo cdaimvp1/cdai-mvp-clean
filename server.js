@@ -8,7 +8,8 @@ const { Server } = require("socket.io");
 
 // --- Config ------------------------------------------------------------------
 
-// Render will inject PORT in production; locally default to 5002.
+// Render will always inject process.env.PORT.
+// Locally we default to 5002.
 const PORT = process.env.PORT || 5002;
 
 // Demo password & session secret
@@ -48,13 +49,14 @@ const sessionMiddleware = session({
 // Attach session to HTTP requests
 app.use(sessionMiddleware);
 
-// Simple header
+// CORS-like basic header
 app.use((req, res, next) => {
   res.setHeader("X-Powered-By", "cd/ai mvp");
   next();
 });
 
-// Allow iframe embedding (for WordPress, etc.)
+// --- Enable iframe embedding (WordPress, etc.) -------------------------------
+
 app.use((req, res, next) => {
   res.removeHeader("X-Frame-Options");
   res.setHeader("Content-Security-Policy", "frame-ancestors *");
@@ -71,7 +73,9 @@ function isAuthenticated(req) {
 }
 
 function requireAuth(req, res, next) {
-  if (isAuthenticated(req)) return next();
+  if (isAuthenticated(req)) {
+    return next();
+  }
   return res.redirect("/login");
 }
 
@@ -117,13 +121,13 @@ io.on("connection", (socket) => {
 
   socket.on(
     "run-workflow",
-    async ({ input, goal, maxCycles, governanceStrictness, mode }) => {
+    async ({ input, goal, maxCycles, governanceStrictness, perfMode }) => {
       console.log("Starting workflow:", {
         input,
         goal,
         maxCycles,
         governanceStrictness,
-        mode,
+        perfMode,
       });
 
       try {
@@ -132,7 +136,7 @@ io.on("connection", (socket) => {
           goal,
           maxCycles: normalizeMaxCycles(maxCycles),
           governanceStrictness: normalizeStrictness(governanceStrictness),
-          mode: normalizeMode(mode),
+          perfMode: normalizePerfMode(perfMode),
         });
       } catch (err) {
         console.error("Workflow error:", err);
@@ -140,13 +144,13 @@ io.on("connection", (socket) => {
         socket.emit("telemetry", {
           type: "mcp-status",
           status: "Error",
-          detail: "An error occurred while running the governed workflow.",
+          detail:
+            "An error occurred while running the governed workflow. Please try again.",
         });
 
         socket.emit("telemetry", {
           type: "final-output",
-          text:
-            "An error occurred while running the governed workflow. Please try again.",
+          text: "An error occurred while running the governed workflow. Please try again.",
         });
       }
     }
@@ -157,7 +161,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- Normalizers & helpers ---------------------------------------------------
+// --- Helpers -----------------------------------------------------------------
 
 function normalizeMaxCycles(raw) {
   const n = Number(raw);
@@ -171,44 +175,10 @@ function normalizeStrictness(raw) {
   return Math.min(1, Math.max(0, f));
 }
 
-function normalizeMode(raw) {
-  const val = String(raw || "").toLowerCase();
-  if (val === "fast") return "fast";
-  if (val === "turbo") return "turbo";
+function normalizePerfMode(raw) {
+  const v = (raw || "").toString().toLowerCase();
+  if (v === "fast" || v === "turbo") return v;
   return "real";
-}
-
-function modeConfig(mode) {
-  switch (mode) {
-    case "fast":
-      return {
-        label: "Fast",
-        minCycles: 1,
-        analyticalTemperature: 0.18,
-        creativeTemperature: 0.35,
-        validatorTemperature: 0.0,
-        useTurboPass: false,
-        useRealModerator: false,
-      };
-    case "turbo":
-      return {
-        label: "Turbo",
-        minCycles: 1,
-        turboTemperature: 0.4,
-        useTurboPass: true,
-        useRealModerator: false,
-      };
-    default:
-      return {
-        label: "Real",
-        minCycles: 2, // ensures at least 2 visible cycles
-        analyticalTemperature: 0.2,
-        creativeTemperature: 0.4,
-        validatorTemperature: 0.0,
-        useTurboPass: false,
-        useRealModerator: true,
-      };
-  }
 }
 
 function initialValidationState() {
@@ -225,19 +195,40 @@ function initialValidationState() {
 
 async function runGovernedWorkflow(
   socket,
-  { input, goal, maxCycles, governanceStrictness, mode }
+  { input, goal, maxCycles, governanceStrictness, perfMode }
 ) {
-  const cfg = modeConfig(mode);
-
   socket.emit("telemetry", { type: "reset" });
 
   const rules = parseRulesFromGoal(goal);
   const ledger = [];
-  let converged = false;
 
+  // Mode-specific tuning
+  let effectiveMaxCycles = maxCycles || 5;
+  let effectiveStrictness = governanceStrictness || 0.85;
+  let minCycles = 1;
+
+  if (perfMode === "real") {
+    // Full convergence behavior: require at least 2 passes to show cycling.
+    minCycles = Math.min(2, effectiveMaxCycles);
+  } else if (perfMode === "fast") {
+    // Still governed, but fewer passes.
+    effectiveMaxCycles = Math.min(3, effectiveMaxCycles);
+    minCycles = 1;
+  } else if (perfMode === "turbo") {
+    // Turbo gets its own ultra-fast path.
+    return runTurboWorkflow(socket, {
+      input,
+      goal,
+      rules,
+      governanceStrictness: effectiveStrictness,
+      ledger,
+    });
+  }
+
+  // Plan cycles for animation (frontend)
   socket.emit("telemetry", {
     type: "cycle-plan",
-    plannedCycles: maxCycles,
+    plannedCycles: effectiveMaxCycles,
   });
 
   socket.emit("telemetry", {
@@ -248,23 +239,23 @@ async function runGovernedWorkflow(
   socket.emit("telemetry", {
     type: "mcp-status",
     status: "Starting",
-    detail: `Initializing governed workflow in ${cfg.label} mode…`,
+    detail: `Initializing governed workflow in ${perfMode.toUpperCase()} mode…`,
   });
 
   // --- Task Agent initial draft ---------------------------------------------
 
   const taskDraft = await callOpenAIChat({
     system: `
-You are the Task Agent in a governed dual-hemisphere system (cd\\ai).
-Generate an initial, neutral draft based on the user task.
-Do not optimize heavily for governance yet; this is a baseline.
-Return ONLY the draft text, no commentary.
+You are the Task Agent in a governed dual-hemisphere AI system (cd\\ai).
+Produce an initial neutral draft based on the user task.
+Do not over-optimize for governance; this is a baseline for refinement.
+Keep the style business-formal and concise.
     `,
     user: `
 User task:
 ${input}
 
-Contextual governance hints:
+High-level governance hints (do NOT treat as exact instructions):
 ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
     `,
     temperature: 0.5,
@@ -283,171 +274,122 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
   socket.emit("telemetry", {
     type: "hemisphere-log",
     hemisphere: "A",
-    message: "Task Agent produced an initial neutral draft.",
+    message: "Task Agent produced the first draft.",
   });
 
   let validation = initialValidationState();
+  let converged = false;
 
-  // --- Cycles ---------------------------------------------------------------
+  // --- Dual-Hemisphere Cycles ------------------------------------------------
 
-  for (let cycle = 1; cycle <= maxCycles; cycle++) {
+  for (let cycle = 1; cycle <= effectiveMaxCycles; cycle++) {
     socket.emit("telemetry", { type: "cycle-update", cycle });
     socket.emit("telemetry", {
       type: "governance-rules-progress",
       cycle,
     });
 
-    if (cfg.useTurboPass) {
-      // ---- TURBO: single OpenAI call per cycle -----------------------------
-      const turboResult = await turboCyclePass(currentText, {
-        input,
-        rules,
-        governanceStrictness,
-        temperature: cfg.turboTemperature,
-        cycle,
-      });
+    // ---- Analytical
+    socket.emit("telemetry", {
+      type: "mcp-status",
+      status: "Analytical Pass",
+      detail: `Cycle ${cycle}: analytical hemisphere enforcing governance constraints.`,
+    });
 
-      currentText = turboResult.rewrittenText;
-      validation = turboResult.validation;
+    const analyticalResult = await analyticalPass(currentText, {
+      input,
+      rules,
+      governanceStrictness: effectiveStrictness,
+    });
 
-      // Analytical log & ledger
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Analytical",
-        cycle,
-        summary: turboResult.analyticalSummary,
-        snippet: currentText.slice(0, 260),
-      });
-      socket.emit("telemetry", {
-        type: "hemisphere-log",
-        hemisphere: "A",
-        message: `Cycle ${cycle}: ${turboResult.analyticalSummary}`,
-      });
+    currentText = analyticalResult.rewrittenText;
+    validation = analyticalResult.validation;
 
-      // Creative log & ledger
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Creative",
-        cycle,
-        summary: turboResult.creativeSummary,
-        snippet: currentText.slice(0, 260),
-      });
-      socket.emit("telemetry", {
-        type: "hemisphere-log",
-        hemisphere: "B",
-        message: `Cycle ${cycle}: ${turboResult.creativeSummary}`,
-      });
+    ledger.push({
+      timestamp: new Date().toISOString(),
+      stage: "Analytical",
+      cycle,
+      summary: analyticalResult.deltaSummary,
+      snippet: currentText.slice(0, 260),
+    });
 
-      // Validator ledger
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Validator",
-        cycle,
-        summary: validationSummary(validation),
-        snippet: currentText.slice(0, 260),
-      });
-    } else {
-      // ---- REAL / FAST: Analytical → Moderator → Creative → Validator -----
+    socket.emit("telemetry", {
+      type: "hemisphere-log",
+      hemisphere: "A",
+      message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
+    });
 
-      // Analytical pass
-      socket.emit("telemetry", {
-        type: "mcp-status",
-        status: "Analytical Pass",
-        detail: `Cycle ${cycle}: Analytical hemisphere enforcing governance rules.`,
-      });
+    // ---- Moderator (mediator between A and B)
+    socket.emit("telemetry", {
+      type: "mcp-status",
+      status: "Moderator",
+      detail: `Cycle ${cycle}: moderator tightening the creative prompt to prevent reintroducing violations.`,
+    });
 
-      const analyticalResult = await analyticalPass(currentText, {
-        input,
-        rules,
-        governanceStrictness,
-        temperature: cfg.analyticalTemperature,
-      });
+    const moderatorResult = await moderatorPass(currentText, {
+      input,
+      rules,
+      governanceStrictness: effectiveStrictness,
+      analyticalSummary: analyticalResult.deltaSummary,
+      directives: analyticalResult.directives,
+    });
 
-      currentText = analyticalResult.rewrittenText;
-      validation = analyticalResult.validation;
+    ledger.push({
+      timestamp: new Date().toISOString(),
+      stage: "Moderator",
+      cycle,
+      summary: moderatorResult.moderatorSummary,
+      snippet: currentText.slice(0, 260),
+    });
 
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Analytical",
-        cycle,
-        summary: analyticalResult.deltaSummary,
-        snippet: currentText.slice(0, 260),
-      });
+    // ---- Creative
+    socket.emit("telemetry", {
+      type: "mcp-status",
+      status: "Creative Pass",
+      detail: `Cycle ${cycle}: creative hemisphere refining tone and readability within moderated constraints.`,
+    });
 
-      socket.emit("telemetry", {
-        type: "hemisphere-log",
-        hemisphere: "A",
-        message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
-      });
+    const creativeResult = await creativePass(currentText, {
+      input,
+      rules,
+      governanceStrictness: effectiveStrictness,
+      moderatedPrompt: moderatorResult.moderatedPrompt,
+    });
 
-      // Moderator (Mediator) – refines directives for Creative
-      const mediatorResult = await mediatorPass(analyticalResult.directives, {
-        governanceStrictness,
-        useRealModel: cfg.useRealModerator,
-      });
+    currentText = creativeResult.rewrittenText;
 
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Mediator",
-        cycle,
-        summary: mediatorResult.summary,
-        snippet: (mediatorResult.creativeInstructions || [])
-          .join(" ")
-          .slice(0, 260),
-      });
+    ledger.push({
+      timestamp: new Date().toISOString(),
+      stage: "Creative",
+      cycle,
+      summary: creativeResult.deltaSummary,
+      snippet: currentText.slice(0, 260),
+    });
 
-      // Creative pass
-      socket.emit("telemetry", {
-        type: "mcp-status",
-        status: "Creative Pass",
-        detail: `Cycle ${cycle}: Creative hemisphere refining tone and readability.`,
-      });
+    socket.emit("telemetry", {
+      type: "hemisphere-log",
+      hemisphere: "B",
+      message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
+    });
 
-      const creativeResult = await creativePass(currentText, {
-        input,
-        rules,
-        governanceStrictness,
-        temperature: cfg.creativeTemperature,
-        creativeInstructions: mediatorResult.creativeInstructions,
-      });
+    // ---- Validator
+    const postCreativeValidation = await validatorPass(currentText, {
+      input,
+      rules,
+      governanceStrictness: effectiveStrictness,
+    });
 
-      currentText = creativeResult.rewrittenText;
+    validation = postCreativeValidation;
 
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Creative",
-        cycle,
-        summary: creativeResult.deltaSummary,
-        snippet: currentText.slice(0, 260),
-      });
+    ledger.push({
+      timestamp: new Date().toISOString(),
+      stage: "Validator",
+      cycle,
+      summary: validationSummary(validation),
+      snippet: currentText.slice(0, 260),
+    });
 
-      socket.emit("telemetry", {
-        type: "hemisphere-log",
-        hemisphere: "B",
-        message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
-      });
-
-      // Validator
-      const postCreativeValidation = await validatorPass(currentText, {
-        input,
-        rules,
-        governanceStrictness,
-        temperature: cfg.validatorTemperature,
-      });
-
-      validation = postCreativeValidation;
-
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "Validator",
-        cycle,
-        summary: validationSummary(validation),
-        snippet: currentText.slice(0, 260),
-      });
-    }
-
-    // Convergence check
-    if (validation.isCompliant && cycle >= cfg.minCycles) {
+    if (validation.isCompliant && cycle >= minCycles) {
       converged = true;
       break;
     }
@@ -458,61 +400,144 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
     type: "mcp-status",
     status: "Finalized",
     detail: converged
-      ? `Governed output locked after dual-hemisphere convergence (${modeConfig(
-          mode
-        ).label} mode).`
-      : `Locked after max cycles (${maxCycles}) in ${
-          modeConfig(mode).label
-        } mode (fail-safe stop).`,
+      ? "Governed output locked after dual-hemisphere convergence."
+      : "Locked after max cycles (fail-safe stop).",
   });
 
   socket.emit("telemetry", { type: "ledger", entries: ledger });
   socket.emit("telemetry", { type: "final-output", text: currentText });
 }
 
-// --- Passes: Analytical, Mediator, Creative, Validator, Turbo ----------------
+// --- Turbo Workflow (ultra-fast) --------------------------------------------
 
-async function analyticalPass(
-  currentText,
-  { input, rules, governanceStrictness, temperature }
+async function runTurboWorkflow(
+  socket,
+  { input, goal, rules, governanceStrictness, ledger }
 ) {
-  const system = `
-You are the ANALYTICAL hemisphere in a governed dual-hemisphere AI system.
-Your job:
-- Enforce structure, clarity, and governance constraints.
-- Remove forbidden terms or risky phrasing.
-- Tighten length and focus while preserving the user's intent.
+  socket.emit("telemetry", {
+    type: "cycle-plan",
+    plannedCycles: 2, // animation: quick A→B→Final
+  });
 
-Return STRICT JSON with:
-{
-  "rewrittenText": "<string>",
-  "deltaSummary": "<1-2 short sentences describing what you changed>",
-  "directives": ["<bullet directive for the creative hemisphere>", ...],
-  "validation": {
-    "forbiddenHits": ["term", ...],
-    "wordCountOk": true/false,
-    "artifactsOk": true/false,
-    "impliedReliabilityOk": true/false
-  }
-}
-`;
-  const user = `
+  socket.emit("telemetry", {
+    type: "governance-rules",
+    rules,
+  });
+
+  socket.emit("telemetry", {
+    type: "mcp-status",
+    status: "Starting",
+    detail:
+      "Turbo mode: single governed pass with approximate validation for demonstration speed.",
+  });
+
+  // Single combined pass: Task + Analytical + Creative in one shot.
+  const combined = await callOpenAIChat({
+    system: `
+You are a combined Task + Analytical + Creative agent in the cd\\ai architecture.
+Your job in TURBO MODE is to:
+- Generate a concise business-formal draft,
+- Respect the governance rules as much as possible,
+- But prioritize speed over exhaustive enforcement.
+
+Return ONLY the final draft text. Do NOT explain your reasoning.
+    `,
+    user: `
 User task:
 ${input}
 
-Governance rules:
+Governance rules (high level – do your best within a single pass):
+${rules.join("\n") || "None provided."}
+    `,
+    temperature: 0.5,
+  });
+
+  const text = combined || `Draft (turbo mode) based on: "${input}"`;
+
+  const now = new Date().toISOString();
+  ledger.push({
+    timestamp: now,
+    stage: "Turbo",
+    cycle: 1,
+    summary:
+      "Turbo mode executed a single combined governed pass (Task + Analytical + Creative). Validation is approximate only.",
+    snippet: text.slice(0, 260),
+  });
+
+  socket.emit("telemetry", {
+    type: "hemisphere-log",
+    hemisphere: "A",
+    message:
+      "Turbo mode: analytical behavior approximated in a single combined pass.",
+  });
+  socket.emit("telemetry", {
+    type: "hemisphere-log",
+    hemisphere: "B",
+    message:
+      "Turbo mode: creative polish applied once under approximate constraints.",
+  });
+
+  socket.emit("telemetry", { type: "governance-rules-final" });
+  socket.emit("telemetry", {
+    type: "mcp-status",
+    status: "Finalized",
+    detail:
+      "Turbo mode completed: governed behavior approximated in a single pass for speed.",
+  });
+
+  socket.emit("telemetry", { type: "ledger", entries: ledger });
+  socket.emit("telemetry", { type: "final-output", text });
+}
+
+// --- Analytical, Moderator, Creative, Validator Passes ----------------------
+
+async function analyticalPass(currentText, { input, rules, governanceStrictness }) {
+  const system = `
+You are the ANALYTICAL hemisphere in the cd\\ai governed architecture.
+Your job:
+- Enforce governance constraints strictly,
+- Make minimal necessary edits to the draft,
+- Report clearly what changed and why.
+
+Return JSON ONLY with the following structure:
+{
+  "rewrittenText": "string",
+  "directives": [
+    {
+      "area": "length | forbidden_terms | structure | tone | artifacts | reliability_language | other",
+      "strength": 0.0-1.0,
+      "instruction": "short plain-language directive"
+    }
+  ],
+  "validation": {
+    "forbiddenHits": ["word1", "word2"],
+    "wordCountOk": true/false,
+    "artifactsOk": true/false,
+    "impliedReliabilityOk": true/false
+  },
+  "deltaSummary": "1–2 sentence explanation of what you changed THIS CYCLE in clear business language."
+}
+  `;
+
+  const user = `
+Task:
+${input}
+
+Governance rules (treat as hard constraints):
 ${rules.join("\n")}
 
 Current draft:
 ${currentText}
 
-Strictness: ${governanceStrictness}
-`;
+Strictness coefficient: ${governanceStrictness.toFixed(2)}
+
+Be conservative: when unsure, prefer to tighten language rather than relax it.
+  `;
 
   const raw = await callOpenAIChat({
     system,
     user,
-    temperature,
+    temperature: 0.2,
     response_format: "json",
   });
 
@@ -525,62 +550,60 @@ Strictness: ${governanceStrictness}
       directives: [],
       validation: initialValidationState(),
       deltaSummary:
-        "Analytical hemisphere encountered a parsing issue; preserved the previous draft.",
+        "Analytical hemisphere encountered a parsing issue and preserved the previous draft.",
     };
   }
 
-  const baseValidation = initialValidationState();
-  const mergedValidation = { ...baseValidation, ...(parsed.validation || {}) };
-
-  mergedValidation.isCompliant =
-    mergedValidation.wordCountOk &&
-    mergedValidation.artifactsOk &&
-    mergedValidation.impliedReliabilityOk &&
-    (mergedValidation.forbiddenHits || []).length === 0;
+  const validation = {
+    ...initialValidationState(),
+    ...(parsed.validation || {}),
+  };
 
   return {
     rewrittenText: parsed.rewrittenText || currentText,
     directives: Array.isArray(parsed.directives) ? parsed.directives : [],
-    validation: mergedValidation,
+    validation,
     deltaSummary:
       parsed.deltaSummary ||
       "Analytical hemisphere updated structure and governance alignment.",
   };
 }
 
-async function mediatorPass(directives, { governanceStrictness, useRealModel }) {
-  if (!directives || directives.length === 0) {
-    return {
-      creativeInstructions: [],
-      summary: "Mediator received no explicit directives; passed draft through.",
-    };
-  }
-
-  // FAST / TURBO: local light-weight mediator
-  if (!useRealModel) {
-    const joined = directives.join("; ");
-    const truncated =
-      joined.length > 220 ? joined.slice(0, 217) + "…" : joined;
-    return {
-      creativeInstructions: [truncated],
-      summary:
-        "Mediator compacted analytical directives into a short set of creative instructions.",
-    };
-  }
-
-  // REAL: call OpenAI to refine directives
+async function moderatorPass(
+  currentText,
+  { input, rules, governanceStrictness, analyticalSummary, directives }
+) {
   const system = `
-You are the MODERATOR between Analytical and Creative hemispheres.
-Convert analytical directives into concise creative instructions.
-Return STRICT JSON:
+You are the MODERATOR between the Analytical and Creative hemispheres in cd\\ai.
+Your role:
+- Rewrite the prompt that will be given to the Creative hemisphere,
+- So that the Creative hemisphere expands and polishes the text WITHOUT reintroducing governance violations.
+- You do NOT edit the draft directly; you only produce a better prompt for the Creative hemisphere.
+
+Return JSON ONLY with:
 {
-  "creativeInstructions": ["<short instruction>", ...],
-  "summary": "<1 short sentence describing how you refined the directives>"
+  "moderatedPrompt": "prompt text the Creative hemisphere should follow",
+  "moderatorSummary": "1–2 sentence summary of how you constrained the Creative behavior"
 }
   `;
+
   const user = `
-Analytical directives (governance strictness: ${governanceStrictness}):
-${JSON.stringify(directives, null, 2)}
+User task:
+${input}
+
+Governance rules:
+${rules.join("\n")}
+
+Current draft:
+${currentText}
+
+Analytical summary this cycle:
+${analyticalSummary}
+
+Analytical directives:
+${JSON.stringify(directives || [], null, 2)}
+
+Strictness coefficient: ${governanceStrictness.toFixed(2)}
   `;
 
   const raw = await callOpenAIChat({
@@ -590,62 +613,67 @@ ${JSON.stringify(directives, null, 2)}
     response_format: "json",
   });
 
+  let parsed;
   try {
-    const parsed = JSON.parse(raw);
-    return {
-      creativeInstructions: Array.isArray(parsed.creativeInstructions)
-        ? parsed.creativeInstructions
-        : directives,
-      summary:
-        parsed.summary ||
-        "Mediator refined analytical directives for the creative hemisphere.",
-    };
+    parsed = JSON.parse(raw);
   } catch {
     return {
-      creativeInstructions: directives,
-      summary:
-        "Mediator encountered a parsing issue and passed analytical directives through unchanged.",
+      moderatedPrompt:
+        "You are the Creative hemisphere. Improve readability and flow without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
+      moderatorSummary:
+        "Moderator fallback: used a default conservative prompt to keep Creative changes bounded.",
     };
   }
+
+  return {
+    moderatedPrompt:
+      parsed.moderatedPrompt ||
+      "You are the Creative hemisphere. Improve readability and flow without relaxing any governance constraints or reintroducing forbidden terms.",
+    moderatorSummary:
+      parsed.moderatorSummary ||
+      "Moderator constrained Creative behavior to focus on clarity and tone without weakening governance alignment.",
+  };
 }
 
 async function creativePass(
   currentText,
-  { input, rules, governanceStrictness, temperature, creativeInstructions }
+  { input, rules, governanceStrictness, moderatedPrompt }
 ) {
   const system = `
-You are the CREATIVE hemisphere in a governed dual-hemisphere system.
-Your responsibilities:
-- Improve readability, flow, and executive polish.
-- Preserve the analytical hemisphere's governance corrections.
-- Do NOT reintroduce forbidden terms or risky claims.
+You are the CREATIVE hemisphere in the cd\\ai architecture.
+You MUST obey the moderatedPrompt you receive.
+Your job:
+- Improve clarity, narrative flow, and executive readability,
+- Without breaking any governance rules or reintroducing forbidden patterns,
+- Keep the length reasonably close unless moderatedPrompt explicitly says otherwise.
 
-Return STRICT JSON:
+Return JSON ONLY with:
 {
-  "rewrittenText": "<string>",
-  "deltaSummary": "<1-2 short sentences describing how you improved tone and clarity>"
+  "rewrittenText": "string",
+  "deltaSummary": "1–2 sentence summary of how you improved tone/readability this cycle"
 }
-`;
+  `;
+
   const user = `
+moderatedPrompt (FOLLOW THIS CAREFULLY):
+${moderatedPrompt}
+
 User task:
 ${input}
 
-Governance rules:
+Governance rules (must remain satisfied):
 ${rules.join("\n")}
 
-Draft (after Analytical hemisphere):
+Current draft to refine:
 ${currentText}
 
-Mediator instructions for this cycle:
-${JSON.stringify(creativeInstructions || [], null, 2)}
-
-Strictness: ${governanceStrictness}
-`;
+Strictness coefficient: ${governanceStrictness.toFixed(2)}
+  `;
 
   const raw = await callOpenAIChat({
     system,
     user,
-    temperature,
+    temperature: 0.4,
     response_format: "json",
   });
 
@@ -656,7 +684,7 @@ Strictness: ${governanceStrictness}
     return {
       rewrittenText: currentText,
       deltaSummary:
-        "Creative hemisphere encountered a parsing issue; kept the previous draft.",
+        "Creative hemisphere encountered a parsing issue and preserved the prior draft.",
     };
   }
 
@@ -664,31 +692,27 @@ Strictness: ${governanceStrictness}
     rewrittenText: parsed.rewrittenText || currentText,
     deltaSummary:
       parsed.deltaSummary ||
-      "Creative hemisphere refined clarity, flow, and tone within constraints.",
+      "Creative hemisphere refined clarity, flow, and tone while respecting governance constraints.",
   };
 }
 
-async function validatorPass(
-  text,
-  { input, rules, governanceStrictness, temperature }
-) {
+async function validatorPass(text, { input, rules, governanceStrictness }) {
   const system = `
-You are the VALIDATOR for a governed dual-hemisphere system.
-You must evaluate whether the text satisfies all governance rules.
-Pay special attention to:
-- Forbidden terms (exact or close variants).
-- Word-count constraints.
-- Requirements for number and style of supporting artifacts.
-- Any wording that implies unreliability, failure, or risk if forbidden.
+You are the Validator in the cd\\ai governed architecture.
+Your job:
+- Check the draft against the governance rules,
+- Identify violations clearly,
+- Return a compact JSON verdict.
 
-Return STRICT JSON:
+Return JSON ONLY with:
 {
-  "forbiddenHits": ["<term>", ...],
+  "forbiddenHits": ["string"],   // any forbidden words or concepts actually present
   "wordCountOk": true/false,
-  "artifactsOk": true/false,
+  "artifactsOk": true/false,     // whether the requested artifacts / structural elements are satisfied
   "impliedReliabilityOk": true/false
 }
-`;
+  `;
+
   const user = `
 User task:
 ${input}
@@ -696,16 +720,16 @@ ${input}
 Governance rules:
 ${rules.join("\n")}
 
-Text to validate:
+Draft to validate:
 ${text}
 
-Strictness: ${governanceStrictness}
-`;
+Strictness coefficient: ${governanceStrictness.toFixed(2)}
+  `;
 
   const raw = await callOpenAIChat({
     system,
     user,
-    temperature,
+    temperature: 0.0,
     response_format: "json",
   });
 
@@ -728,91 +752,6 @@ Strictness: ${governanceStrictness}
   return merged;
 }
 
-// TURBO mode: single OpenAI call per cycle
-async function turboCyclePass(
-  currentText,
-  { input, rules, governanceStrictness, temperature, cycle }
-) {
-  const system = `
-You are a combined ANALYTICAL + CREATIVE + VALIDATOR mode in a governed system.
-For this cycle you must:
-- Tighten governance alignment.
-- Improve tone/readability.
-- Assess whether all rules are now satisfied.
-
-Return STRICT JSON:
-{
-  "rewrittenText": "<string>",
-  "analyticalSummary": "<1-2 short sentences on structural/governance fixes>",
-  "creativeSummary": "<1-2 short sentences on tone/readability changes>",
-  "validation": {
-    "forbiddenHits": ["<term>", ...],
-    "wordCountOk": true/false,
-    "artifactsOk": true/false,
-    "impliedReliabilityOk": true/false
-  }
-}
-`;
-  const user = `
-Cycle: ${cycle}
-
-User task:
-${input}
-
-Governance rules:
-${rules.join("\n")}
-
-Current draft:
-${currentText}
-
-Strictness: ${governanceStrictness}
-`;
-
-  const raw = await callOpenAIChat({
-    system,
-    user,
-    temperature,
-    response_format: "json",
-  });
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return {
-      rewrittenText: currentText,
-      analyticalSummary:
-        "Turbo cycle encountered a parsing issue; reused previous draft.",
-      creativeSummary:
-        "Turbo cycle encountered a parsing issue; reused previous draft.",
-      validation: initialValidationState(),
-    };
-  }
-
-  const baseValidation = initialValidationState();
-  const mergedValidation = {
-    ...baseValidation,
-    ...(parsed.validation || {}),
-  };
-
-  mergedValidation.isCompliant =
-    mergedValidation.wordCountOk &&
-    mergedValidation.artifactsOk &&
-    mergedValidation.impliedReliabilityOk &&
-    (mergedValidation.forbiddenHits || []).length === 0;
-
-  return {
-    rewrittenText: parsed.rewrittenText || currentText,
-    analyticalSummary:
-      parsed.analyticalSummary ||
-      "Analytical portion tightened structure and governance alignment.",
-    creativeSummary:
-      parsed.creativeSummary ||
-      "Creative portion refined tone and readability for executives.",
-    validation: mergedValidation,
-  };
-}
-
 function validationSummary(v) {
   const issues = [];
   if (!v.wordCountOk) issues.push("WORD_COUNT");
@@ -825,7 +764,7 @@ function validationSummary(v) {
     : "All constraints satisfied.";
 }
 
-// --- OpenAI helper -----------------------------------------------------------
+// --- OpenAI Helper -----------------------------------------------------------
 
 async function callOpenAIChat({
   system,
@@ -875,7 +814,7 @@ async function callOpenAIChat({
   }
 }
 
-// --- Rules parser ------------------------------------------------------------
+// --- Rules Parser ------------------------------------------------------------
 
 function parseRulesFromGoal(goalText) {
   if (!goalText) return [];
