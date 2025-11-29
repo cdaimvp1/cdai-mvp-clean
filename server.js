@@ -13,9 +13,12 @@ const { Server } = require("socket.io");
 const PORT = process.env.PORT || 5002;
 
 // Demo password & session secret
-const DEMO_PASSWORD = "hpxCK2PUzh8*67pEB!3E";
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || "change-this-session-secret";
+const DEMO_PASSWORD = process.env.SESSION_PASSWORD;
+if (!DEMO_PASSWORD) {
+  console.error("SESSION_PASSWORD missing from environment");
+  process.exit(1);
+}
+
 
 // OpenAI
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -119,9 +122,6 @@ app.get("/health", (req, res) => {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // Per-socket clarification resolver
-  socket.currentClarificationResolver = null;
-
   socket.on(
     "run-workflow",
     async ({ input, goal, maxCycles, governanceStrictness, perfMode }) => {
@@ -159,22 +159,8 @@ io.on("connection", (socket) => {
     }
   );
 
-  // User clarification coming back from the UI (chat panel / reply box)
-  socket.on("user-clarification", ({ answer }) => {
-    const trimmed = (answer || "").toString().trim();
-    if (socket.currentClarificationResolver) {
-      socket.currentClarificationResolver(trimmed || null);
-      socket.currentClarificationResolver = null;
-    }
-  });
-
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
-    // If they disconnect while we were waiting for feedback, release the waiter
-    if (socket.currentClarificationResolver) {
-      socket.currentClarificationResolver(null);
-      socket.currentClarificationResolver = null;
-    }
   });
 });
 
@@ -208,33 +194,43 @@ function initialValidationState() {
   };
 }
 
-// Wait for user clarification through Socket.IO with timeout
-function waitForUserClarification(socket, { cycle, question, confidence }) {
+// Wait for user clarification (MCP ↔ user loop)
+function waitForUserClarification(socket, { cycle }) {
   return new Promise((resolve) => {
-    let finished = false;
+    let settled = false;
+    const timeoutMs = 120000; // 2 minutes
 
-    const timeoutMs = 5 * 60 * 1000; // 5 minutes safety timeout
-    const timer = setTimeout(() => {
-      if (finished) return;
-      finished = true;
-      socket.currentClarificationResolver = null;
+    function cleanup() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      socket.off("clarification-response", onResponse);
+    }
+
+    function onResponse(payload) {
+      if (!payload) return;
+
+      // Simple match-by-cycle to avoid collisions
+      if (
+        typeof payload.cycle === "number" &&
+        typeof cycle === "number" &&
+        payload.cycle !== cycle
+      ) {
+        return;
+      }
+
+      cleanup();
+      const answer =
+        typeof payload.answer === "string" ? payload.answer.trim() : "";
+      resolve(answer || null);
+    }
+
+    const timeoutId = setTimeout(() => {
+      cleanup();
       resolve(null);
     }, timeoutMs);
 
-    socket.currentClarificationResolver = (answer) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      resolve(answer);
-    };
-
-    // Emit a telemetry packet for the UI to show in the chat panel
-    socket.emit("telemetry", {
-      type: "user-question",
-      cycle,
-      question,
-      confidence,
-    });
+    socket.on("clarification-response", onResponse);
   });
 }
 
@@ -248,7 +244,6 @@ async function runGovernedWorkflow(
 
   const rules = parseRulesFromGoal(goal);
   const ledger = [];
-  const userClarifications = [];
 
   // Mode-specific tuning
   let effectiveMaxCycles = maxCycles || 5;
@@ -298,17 +293,22 @@ You are the Task Agent in a governed dual-hemisphere AI system (cd\\ai).
 
 Your responsibilities:
 - Produce an initial neutral draft based on the user task.
-- Preserve any obvious structural signals from the user input (e.g., "Subject:", bullet lists, or email signatures),
-  unless the governance rules explicitly require a different format.
-- Write in clear, business-formal language suitable for senior readers.
-- Do NOT over-optimize for governance; this is a baseline to be refined.
+- Infer the most natural output format from the task (e.g., email, memo, bullets),
+  and preserve that structure (greetings, subject lines, paragraphs, bullets)
+  unless governance rules explicitly require a different structure.
+- Do not over-optimize for governance; this is a baseline for refinement by
+  the Analytical and Creative hemispheres.
+- Keep the style business-formal and concise by default.
     `,
     user: `
-User task (may implicitly signal desired format such as email, memo, or short answer):
+User task:
 ${input}
 
 High-level governance hints (do NOT treat as exact instructions):
 ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
+
+If the user task clearly implies a format (e.g., "draft an email", "create 4 bullet points"),
+honor that format in your draft, as long as it does not directly conflict with the governance hints.
     `,
     temperature: 0.5,
   });
@@ -319,7 +319,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
     timestamp: new Date().toISOString(),
     stage: "TaskAgent",
     cycle: 0,
-    summary: "Initial draft generated by Task Agent.",
+    summary: "Initial draft generated by Task Agent (format inferred from task).",
     snippet: currentText.slice(0, 260),
   });
 
@@ -331,6 +331,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
 
   let validation = initialValidationState();
   let converged = false;
+  let clarificationCount = 0;
 
   // --- Dual-Hemisphere Cycles ------------------------------------------------
 
@@ -341,7 +342,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       cycle,
     });
 
-    // ---- Analytical Hemisphere ---------------------------------------------
+    // ---- Analytical
     socket.emit("telemetry", {
       type: "mcp-status",
       status: "Analytical Pass",
@@ -352,7 +353,6 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       input,
       rules,
       governanceStrictness: effectiveStrictness,
-      userClarifications,
     });
 
     currentText = analyticalResult.rewrittenText;
@@ -372,7 +372,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
     });
 
-    // ---- Moderator Hemisphere ----------------------------------------------
+    // ---- Moderator (mediator between A and B)
     socket.emit("telemetry", {
       type: "mcp-status",
       status: "Moderator",
@@ -385,7 +385,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       governanceStrictness: effectiveStrictness,
       analyticalSummary: analyticalResult.deltaSummary,
       directives: analyticalResult.directives,
-      userClarifications,
+      validation,
     });
 
     ledger.push({
@@ -396,61 +396,85 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       snippet: currentText.slice(0, 260),
     });
 
-    // Optional user clarification loop
+    socket.emit("telemetry", {
+      type: "moderator-log",
+      message: `Cycle ${cycle}: ${moderatorResult.moderatorSummary} ${
+        typeof moderatorResult.confidence === "number"
+          ? `(confidence ${moderatorResult.confidence.toFixed(2)})`
+          : ""
+      }`.trim(),
+    });
+
+    // --- Optional MCP ↔ user clarification loop -----------------------------
+    let userFeedback = null;
+
     if (
-      moderatorResult.askUser &&
-      moderatorResult.userQuestion &&
-      typeof moderatorResult.confidence === "number"
+      moderatorResult.needsUserClarification &&
+      clarificationCount < 2 && // guardrail: at most 2 questions per run
+      perfMode !== "turbo"
     ) {
-      const confidencePct = Math.round(moderatorResult.confidence * 100);
+      clarificationCount += 1;
+
+      const question =
+        moderatorResult.userQuestion ||
+        "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1–2 sentences.";
+
+      socket.emit("telemetry", {
+        type: "clarification-request",
+        question,
+        confidence: moderatorResult.confidence ?? null,
+        cycle,
+      });
+
       ledger.push({
         timestamp: new Date().toISOString(),
-        stage: "Moderator",
+        stage: "ClarificationRequest",
         cycle,
-        summary: `Moderator requested user clarification (confidence ${confidencePct}%). Question: ${moderatorResult.userQuestion}`,
-        snippet: currentText.slice(0, 260),
+        summary: `Moderator requested user clarification: "${question.slice(
+          0,
+          200
+        )}"`,
+        snippet: currentText.slice(0, 200),
       });
 
-      // Ask user via chat / clarification UI
-      const userAnswer = await waitForUserClarification(socket, {
-        cycle,
-        question: moderatorResult.userQuestion,
-        confidence: moderatorResult.confidence,
-      });
+      userFeedback = await waitForUserClarification(socket, { cycle });
 
-      if (userAnswer) {
-        userClarifications.push({
-          cycle,
-          question: moderatorResult.userQuestion,
-          answer: userAnswer,
-        });
-
+      if (userFeedback) {
         ledger.push({
           timestamp: new Date().toISOString(),
-          stage: "UserInput",
+          stage: "UserFeedback",
           cycle,
-          summary: `User provided clarification: "${userAnswer.slice(0, 200)}"${
-            userAnswer.length > 200 ? "..." : ""
-          }`,
-          snippet: currentText.slice(0, 260),
+          summary: `User clarification received and will be incorporated into this cycle.`,
+          snippet: userFeedback.slice(0, 200),
+        });
+
+        socket.emit("telemetry", {
+          type: "moderator-log",
+          message: `Cycle ${cycle}: user clarification received and injected into the MCP prompt.`,
         });
       } else {
         ledger.push({
           timestamp: new Date().toISOString(),
-          stage: "UserInput",
+          stage: "ClarificationTimeout",
           cycle,
           summary:
-            "No user clarification received within the allotted time; continuing with existing constraints.",
-          snippet: currentText.slice(0, 260),
+            "No user clarification received within the time window; MCP continued using existing assumptions.",
+          snippet: currentText.slice(0, 200),
+        });
+
+        socket.emit("telemetry", {
+          type: "moderator-log",
+          message: `Cycle ${cycle}: no user clarification received in time; continued with existing interpretation.`,
         });
       }
     }
 
-    // ---- Creative Hemisphere -----------------------------------------------
+    // ---- Creative
     socket.emit("telemetry", {
       type: "mcp-status",
       status: "Creative Pass",
-      detail: `Cycle ${cycle}: creative hemisphere refining tone and readability within moderated constraints.`,
+      detail:
+        "Creative hemisphere refining tone and readability within moderated constraints.",
     });
 
     const creativeResult = await creativePass(currentText, {
@@ -458,7 +482,7 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       rules,
       governanceStrictness: effectiveStrictness,
       moderatedPrompt: moderatorResult.moderatedPrompt,
-      userClarifications,
+      userFeedback,
     });
 
     currentText = creativeResult.rewrittenText;
@@ -477,12 +501,11 @@ ${rules.map((r, i) => `${i + 1}. ${r}`).join("\n") || "None provided."}
       message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
     });
 
-    // ---- Validator ---------------------------------------------------------
+    // ---- Validator
     const postCreativeValidation = await validatorPass(currentText, {
       input,
       rules,
       governanceStrictness: effectiveStrictness,
-      userClarifications,
     });
 
     validation = postCreativeValidation;
@@ -542,11 +565,11 @@ async function runTurboWorkflow(
     system: `
 You are a combined Task + Analytical + Creative agent in the cd\\ai architecture.
 
-In TURBO MODE you must:
-- Generate a concise draft in clear business-formal language,
-- Respect the governance rules as much as feasible in a single pass,
-- Preserve obvious structural cues (e.g., email-like subject lines) unless rules forbid them,
-- Prioritize speed over exhaustive enforcement.
+TURBO MODE:
+- Generate a concise business-formal draft,
+- Respect the governance rules as much as reasonably possible,
+- Preserve natural formatting inferred from the task (subject lines, greetings, bullets),
+- But prioritize speed over exhaustive enforcement or convergence.
 
 Return ONLY the final draft text. Do NOT explain your reasoning.
     `,
@@ -584,6 +607,11 @@ ${rules.join("\n") || "None provided."}
     message:
       "Turbo mode: creative polish applied once under approximate constraints.",
   });
+  socket.emit("telemetry", {
+    type: "moderator-log",
+    message:
+      "Turbo mode: moderator behavior simulated for demo; no user clarifications requested in this mode.",
+  });
 
   socket.emit("telemetry", { type: "governance-rules-final" });
   socket.emit("telemetry", {
@@ -601,16 +629,17 @@ ${rules.join("\n") || "None provided."}
 
 async function analyticalPass(
   currentText,
-  { input, rules, governanceStrictness, userClarifications }
+  { input, rules, governanceStrictness }
 ) {
   const system = `
 You are the ANALYTICAL hemisphere in the cd\\ai governed architecture.
 
 Your responsibilities:
-- Enforce governance constraints strictly.
-- Make the minimal necessary edits to the draft.
-- Clearly explain what changed and why in this cycle.
-- Prefer tightening language over relaxing constraints when in doubt.
+- Enforce governance constraints strictly,
+- Make minimal necessary edits to the draft,
+- Preserve the user's inferred structure and format whenever possible
+  (e.g., if it already looks like an email, keep greetings, subject line, closing),
+- Report clearly what changed and why.
 
 Return JSON ONLY with the following structure:
 {
@@ -632,30 +661,20 @@ Return JSON ONLY with the following structure:
 }
   `;
 
-  const clarificationsText =
-    userClarifications && userClarifications.length
-      ? userClarifications
-          .map(
-            (c) =>
-              `Cycle ${c.cycle} – Q: ${c.question}\nA: ${c.answer}\n`
-          )
-          .join("\n")
-      : "None.";
-
   const user = `
-User task:
+Task:
 ${input}
 
 Governance rules (treat as hard constraints):
 ${rules.join("\n")}
 
-Current draft:
+Current draft (preserve its overall format if possible):
 ${currentText}
 
-Additional user clarifications so far (treat as authoritative when not conflicting with rules):
-${clarificationsText}
-
 Strictness coefficient: ${governanceStrictness.toFixed(2)}
+
+Be conservative: when unsure, prefer to tighten language rather than relax it.
+Do NOT flatten formatting unless the rules clearly require a structural change.
   `;
 
   const raw = await callOpenAIChat({
@@ -695,46 +714,26 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
 
 async function moderatorPass(
   currentText,
-  {
-    input,
-    rules,
-    governanceStrictness,
-    analyticalSummary,
-    directives,
-    userClarifications,
-  }
+  { input, rules, governanceStrictness, analyticalSummary, directives, validation }
 ) {
   const system = `
 You are the MODERATOR between the Analytical and Creative hemispheres in cd\\ai.
 
-Your responsibilities:
-- Rewrite the prompt that will be given to the Creative hemisphere.
-- Ensure the Creative hemisphere expands and polishes the text WITHOUT:
-  - reintroducing governance violations,
-  - undoing analytical safeguards,
-  - ignoring user clarifications.
-- You do NOT edit the draft directly; you only produce a better prompt for the Creative hemisphere.
-- You also estimate whether more guidance from the human user is needed.
+Your role:
+- Rewrite the prompt that will be given to the Creative hemisphere,
+- So that the Creative hemisphere expands and polishes the text WITHOUT reintroducing governance violations,
+- Preserve the existing inferred output format (email, memo, bullets, etc.) unless rules require otherwise,
+- Decide whether user clarification is needed when confidence is low or the rules/inputs are ambiguous.
 
 Return JSON ONLY with:
 {
   "moderatedPrompt": "prompt text the Creative hemisphere should follow",
   "moderatorSummary": "1–2 sentence summary of how you constrained the Creative behavior",
-  "askUser": true/false,
-  "userQuestion": "null or short, clear question for the user in business language",
-  "confidence": 0.0-1.0
+  "confidence": 0.0-1.0,
+  "needsUserClarification": true/false,
+  "userQuestion": "short, plain-language question to ask the user when clarification is needed, or null if not needed"
 }
   `;
-
-  const clarificationsText =
-    userClarifications && userClarifications.length
-      ? userClarifications
-          .map(
-            (c) =>
-              `Cycle ${c.cycle} – Q: ${c.question}\nA: ${c.answer}\n`
-          )
-          .join("\n")
-      : "None so far.";
 
   const user = `
 User task:
@@ -752,13 +751,19 @@ ${analyticalSummary}
 Analytical directives:
 ${JSON.stringify(directives || [], null, 2)}
 
-User clarifications received so far (highly relevant for removing ambiguity):
-${clarificationsText}
+Validator state:
+${JSON.stringify(validation || {}, null, 2)}
 
 Strictness coefficient: ${governanceStrictness.toFixed(2)}
 
-If you are not confident the Creative hemisphere can safely act without more human guidance,
-set "askUser": true and provide ONE short, concrete question in "userQuestion".
+Guidance:
+- If you are reasonably confident (e.g., confidence >= 0.7) that you understand
+  the user's intent and the governance rules are unambiguous, set
+  "needsUserClarification": false.
+- If you are unsure between two or more interpretations of what the user wants
+  or how to satisfy the rules, set "needsUserClarification": true and craft
+  a single clear question that a senior business stakeholder could answer in
+  1–2 sentences.
   `;
 
   const raw = await callOpenAIChat({
@@ -777,9 +782,9 @@ set "askUser": true and provide ONE short, concrete question in "userQuestion".
         "You are the Creative hemisphere. Improve readability and flow without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
       moderatorSummary:
         "Moderator fallback: used a default conservative prompt to keep Creative changes bounded.",
-      askUser: false,
+      confidence: 0.6,
+      needsUserClarification: false,
       userQuestion: null,
-      confidence: 0.7,
     };
   }
 
@@ -790,30 +795,27 @@ set "askUser": true and provide ONE short, concrete question in "userQuestion".
     moderatorSummary:
       parsed.moderatorSummary ||
       "Moderator constrained Creative behavior to focus on clarity and tone without weakening governance alignment.",
-    askUser: Boolean(parsed.askUser),
-    userQuestion: parsed.userQuestion || null,
     confidence:
-      typeof parsed.confidence === "number"
-        ? Math.min(1, Math.max(0, parsed.confidence))
-        : 0.75,
+      typeof parsed.confidence === "number" ? parsed.confidence : 0.7,
+    needsUserClarification: !!parsed.needsUserClarification,
+    userQuestion: parsed.userQuestion || null,
   };
 }
 
 async function creativePass(
   currentText,
-  { input, rules, governanceStrictness, moderatedPrompt, userClarifications }
+  { input, rules, governanceStrictness, moderatedPrompt, userFeedback }
 ) {
   const system = `
 You are the CREATIVE hemisphere in the cd\\ai architecture.
-
 You MUST obey the moderatedPrompt you receive.
 
-Your responsibilities:
-- Improve clarity, narrative flow, and executive readability.
-- Preserve or enhance any structural cues (email header, paragraphs, lists) that serve the task,
-  unless the governance rules explicitly require a different format.
-- Do NOT break governance rules or reintroduce forbidden patterns.
-- Keep the length reasonably close unless the moderatedPrompt explicitly says otherwise.
+Your job:
+- Improve clarity, narrative flow, and executive readability,
+- Preserve the existing inferred format (email, memo, bullets, etc.) unless
+  moderatedPrompt explicitly instructs otherwise,
+- Do NOT reintroduce any governance violations or forbidden language,
+- Keep the length reasonably close unless moderatedPrompt explicitly says otherwise.
 
 Return JSON ONLY with:
 {
@@ -821,16 +823,6 @@ Return JSON ONLY with:
   "deltaSummary": "1–2 sentence summary of how you improved tone/readability this cycle"
 }
   `;
-
-  const clarificationsText =
-    userClarifications && userClarifications.length
-      ? userClarifications
-          .map(
-            (c) =>
-              `Cycle ${c.cycle} – Q: ${c.question}\nA: ${c.answer}\n`
-          )
-          .join("\n")
-      : "None.";
 
   const user = `
 moderatedPrompt (FOLLOW THIS CAREFULLY):
@@ -842,11 +834,11 @@ ${input}
 Governance rules (must remain satisfied):
 ${rules.join("\n")}
 
-Current draft to refine:
+Current draft to refine (preserve structure unless instructed otherwise):
 ${currentText}
 
-Additional user clarifications to respect:
-${clarificationsText}
+User clarification (if any; treat as authoritative when present):
+${userFeedback || "None provided."}
 
 Strictness coefficient: ${governanceStrictness.toFixed(2)}
   `;
@@ -873,22 +865,18 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
     rewrittenText: parsed.rewrittenText || currentText,
     deltaSummary:
       parsed.deltaSummary ||
-      "Creative hemisphere refined clarity, flow, and tone while respecting governance constraints and preserving reasonable structure.",
+      "Creative hemisphere refined clarity, flow, and tone while respecting governance constraints.",
   };
 }
 
-async function validatorPass(
-  text,
-  { input, rules, governanceStrictness, userClarifications }
-) {
+async function validatorPass(text, { input, rules, governanceStrictness }) {
   const system = `
 You are the Validator in the cd\\ai governed architecture.
 
-Your responsibilities:
-- Check the draft against the governance rules.
-- Identify any violations clearly and compactly.
-- Take into account user clarifications where they help resolve ambiguity,
-  but NEVER let them override hard governance constraints.
+Your job:
+- Check the draft against the governance rules,
+- Identify violations clearly,
+- Return a compact JSON verdict.
 
 Return JSON ONLY with:
 {
@@ -899,16 +887,6 @@ Return JSON ONLY with:
 }
   `;
 
-  const clarificationsText =
-    userClarifications && userClarifications.length
-      ? userClarifications
-          .map(
-            (c) =>
-              `Cycle ${c.cycle} – Q: ${c.question}\nA: ${c.answer}\n`
-          )
-          .join("\n")
-      : "None.";
-
   const user = `
 User task:
 ${input}
@@ -918,9 +896,6 @@ ${rules.join("\n")}
 
 Draft to validate:
 ${text}
-
-User clarifications:
-${clarificationsText}
 
 Strictness coefficient: ${governanceStrictness.toFixed(2)}
   `;
