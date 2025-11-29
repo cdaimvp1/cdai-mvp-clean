@@ -661,6 +661,11 @@ input[type="range"]::-moz-range-thumb {
   padding-left: 6px;
 }
 
+.log-entry.moderator {
+  border-left: 2px solid #d3b5ff;
+  padding-left: 6px;
+}
+
 .timestamp {
   font-size: 10px;
   color: #8085b3;
@@ -695,6 +700,85 @@ input[type="range"]::-moz-range-thumb {
 .download-btn:hover {
   background: #23284a;
   color: var(--text-primary);
+}
+
+/* ============================================================================
+   Clarification panel (MCP ↔ user loop)
+   ========================================================================== */
+
+.clarification-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.clarification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.clarification-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.clarification-confidence {
+  font-size: 10px;
+  color: #a8acda;
+}
+
+.clarification-question {
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.clarification-input {
+  width: 100%;
+  min-height: 50px;
+  resize: vertical;
+  background: #070916;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.clarification-input::placeholder {
+  color: #7378a1;
+}
+
+.clarification-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.clarification-send-btn {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #181b30;
+  color: var(--text-secondary);
+  transition: background 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.clarification-send-btn:hover:not(:disabled) {
+  background: #23284a;
+  color: var(--text-primary);
+}
+
+.clarification-send-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ============================================================================

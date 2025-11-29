@@ -214,6 +214,43 @@ Structural & Style Constraints:
           <div class="log-content" id="creative-log"></div>
         </section>
 
+        <!-- Moderator & User Clarifications -->
+        <section class="card log-card" data-panel="moderator">
+          <header class="log-header">
+            <span>Moderator / User Clarifications</span>
+            <button class="chevron-btn" data-target="moderator-log" title="Toggle">
+              <span class="chevron chevron-open">▼</span>
+              <span class="chevron chevron-closed">▶</span>
+            </button>
+          </header>
+          <div class="log-content" id="moderator-log"></div>
+
+          <div class="clarification-panel" id="clarification-panel">
+            <div class="clarification-header">
+              <span class="clarification-title">User Clarification Request</span>
+              <span
+                class="clarification-confidence"
+                id="clarification-confidence"
+              ></span>
+            </div>
+            <p class="clarification-question" id="clarification-question">
+              No clarification requested yet for this run.
+            </p>
+            <textarea
+              id="clarification-input"
+              class="clarification-input"
+              placeholder="Type a brief clarification for the MCP…"
+            ></textarea>
+            <button
+              id="clarification-send"
+              class="clarification-send-btn"
+              disabled
+            >
+              Send Response to MCP
+            </button>
+          </div>
+        </section>
+
         <!-- Immutable Ledger -->
         <section class="card log-card collapsed" data-panel="ledger">
           <header class="log-header">
