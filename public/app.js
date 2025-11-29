@@ -1,4 +1,4 @@
-// app.js – cd\ai MVP front-end logic
+// app.js – cd\ai MVP front-end logic (meta-governance ready)
 
 const socket = io();
 
@@ -52,11 +52,31 @@ let isWorkflowRunning = false;
 let governanceLocked = false;
 let currentGoalText = "";
 let currentPerfMode = "real";
-let currentRules = []; // [{ text, origin: 'user'|'system'|'user-clarified', status: 'pending'|'in-progress'|'passed' }]
+
+/**
+ * currentRules: array of objects like:
+ * {
+ *   id: string | number | null,
+ *   text: string,
+ *   origin: "user" | "system" | "system_inferred" | "user-clarified" | "ignored" | "conflicted",
+ *   status: "pending" | "in-progress" | "passed" | "ignored" | "conflicted",
+ *   confidence: number | null,
+ *   severity: "Low" | "Moderate" | "High" | "Critical" | null,
+ *   impact: string | null,
+ *   explanation: string | null,
+ *   escalationTargets: string[] | null,
+ *   applied: boolean | null
+ * }
+ */
+let currentRules = [];
+
 let currentLedger = [];
 
 // For MCP ↔ user clarification loop
 let pendingClarification = null; // { cycle, question, confidence }
+
+// For universal governance object (backend schema)
+let currentGovernanceObject = null;
 
 // ==============================
 // SMALL HELPERS
@@ -148,6 +168,7 @@ function resetConversationIfAllowed() {
   if (isWorkflowRunning) return;
   if (chatHistoryEl) chatHistoryEl.innerHTML = "";
   pendingClarification = null;
+  currentGovernanceObject = null;
 }
 
 // ==============================
@@ -168,18 +189,98 @@ function renderRules() {
 
     const textSpan = document.createElement("span");
     textSpan.classList.add("rule-text");
+
+    // Origin-based coloring (UI indicators for rule states)
     if (rule.origin === "system" || rule.origin === "system_inferred") {
       textSpan.classList.add("rule-system-generated");
     } else if (rule.origin === "user-clarified") {
       textSpan.classList.add("rule-user-clarified");
+    } else if (rule.origin === "ignored") {
+      textSpan.classList.add("rule-ignored");
+    } else if (rule.origin === "conflicted") {
+      textSpan.classList.add("rule-conflicted");
     }
 
-    textSpan.textContent = rule.text;
+    let label = rule.text || "";
+
+    // Attach severity/impact inline, if present
+    const sev = rule.severity || null;
+    const impact = rule.impact || null;
+    const applied = rule.applied === false ? " (not applied)" : "";
+
+    if (sev || impact || applied) {
+      const detailParts = [];
+      if (sev) detailParts.push(`Sev: ${sev}`);
+      if (impact) detailParts.push(`Impact: ${impact}`);
+      if (applied) detailParts.push(`State:${applied}`);
+      label += `  [${detailParts.join(" | ")}]`;
+    }
+
+    if (rule.explanation) {
+      label += ` — ${rule.explanation}`;
+    }
+
+    textSpan.textContent = label;
 
     li.appendChild(dot);
     li.appendChild(textSpan);
     rulesListEl.appendChild(li);
   });
+}
+
+function normalizeIncomingRule(raw, defaultOrigin = "user") {
+  if (!raw) {
+    return {
+      id: null,
+      text: "",
+      origin: defaultOrigin,
+      status: "pending",
+      confidence: null,
+      severity: null,
+      impact: null,
+      explanation: null,
+      escalationTargets: null,
+      applied: null,
+    };
+  }
+
+  // Accept strings or objects
+  if (typeof raw === "string") {
+    return {
+      id: null,
+      text: raw,
+      origin: defaultOrigin,
+      status: "pending",
+      confidence: null,
+      severity: null,
+      impact: null,
+      explanation: null,
+      escalationTargets: null,
+      applied: null,
+    };
+  }
+
+  return {
+    id: raw.id ?? null,
+    text: raw.text || raw.rule || "",
+    origin:
+      raw.origin ||
+      (raw.inferred ? "system_inferred" : raw.clarified ? "user-clarified" : defaultOrigin),
+    status: raw.status || (raw.ignored ? "ignored" : "pending"),
+    confidence:
+      typeof raw.confidence === "number" ? raw.confidence : null,
+    severity: raw.severity || null,
+    impact: raw.impact || null,
+    explanation: raw.explanation || null,
+    escalationTargets:
+      Array.isArray(raw.escalationTargets) ? raw.escalationTargets : null,
+    applied:
+      typeof raw.applied === "boolean"
+        ? raw.applied
+        : raw.status === "ignored"
+        ? false
+        : null,
+  };
 }
 
 function initRulesFromServer(payloadRules) {
@@ -188,22 +289,11 @@ function initRulesFromServer(payloadRules) {
   if (!incoming.length && currentGoalText) {
     // fallback: parse from current goal
     const parsed = parseRulesFromText(currentGoalText);
-    currentRules = parsed.map((t) => ({
-      text: t,
-      origin: "user",
-      status: "pending",
-    }));
+    currentRules = parsed.map((t) =>
+      normalizeIncomingRule({ text: t, origin: "user", status: "pending" })
+    );
   } else {
-    currentRules = incoming.map((r) => {
-      if (typeof r === "string") {
-        return { text: r, origin: "user", status: "pending" };
-      }
-      return {
-        text: r.text || r.rule || "",
-        origin: r.origin || "user",
-        status: r.status || "pending",
-      };
-    });
+    currentRules = incoming.map((r) => normalizeIncomingRule(r, "user"));
   }
 
   renderRules();
@@ -225,10 +315,14 @@ function markRulesProgress() {
 }
 
 function markRulesFinal() {
-  currentRules = currentRules.map((r) => ({
-    ...r,
-    status: "passed",
-  }));
+  currentRules = currentRules.map((r) => {
+    if (r.status === "ignored" || r.status === "conflicted") return r;
+    return {
+      ...r,
+      status: "passed",
+      applied: true,
+    };
+  });
   renderRules();
 }
 
@@ -278,11 +372,17 @@ function updateLedger(entries) {
     const div = document.createElement("div");
     div.className = "log-entry ledger";
     const ts = e.timestamp || nowDateTime();
+
+    // Some ledger entries may have richer payloads; keep it readable.
+    const stage = e.stage || "Stage";
+    const cycle = e.cycle ?? "-";
+    const summary = e.summary || "";
+
     div.innerHTML = `<span class="timestamp">${escapeHtml(
       ts
-    )}</span>[${escapeHtml(e.stage)} – cycle ${escapeHtml(
-      String(e.cycle)
-    )}] ${escapeHtml(e.summary || "")}`;
+    )}</span>[${escapeHtml(stage)} – cycle ${escapeHtml(
+      String(cycle)
+    )}] ${escapeHtml(summary)}`;
     ledgerLogEl.appendChild(div);
   });
 
@@ -404,16 +504,19 @@ function lockGovernance() {
   governanceLocked = true;
 
   const parsed = parseRulesFromText(text);
-  currentRules = parsed.map((r) => ({
-    text: r,
-    origin: "user",
-    status: "pending",
-  }));
+  currentRules = parsed.map((r) =>
+    normalizeIncomingRule({ text: r, origin: "user", status: "pending" })
+  );
   renderRules();
 
   appendChatMessage({
     sender: "system",
     text: "Governance rules submitted. All subsequent runs will enforce this configuration until you reset or change them.",
+  });
+
+  // Let the backend know about updated governance (optional).
+  socket.emit("submit-governance", {
+    goal: currentGoalText,
   });
 }
 
@@ -448,6 +551,8 @@ if (goalResetButtonEl) {
       sender: "system",
       text: "Governance rules cleared. Submit new rules before running the next task.",
     });
+
+    socket.emit("reset-governance");
   });
 }
 
@@ -515,6 +620,7 @@ if (chatInputEl) {
 if (chatResetButtonEl) {
   chatResetButtonEl.addEventListener("click", () => {
     resetConversationIfAllowed();
+    socket.emit("reset-conversation");
   });
 }
 
@@ -552,6 +658,7 @@ socket.on("telemetry", (payload) => {
       currentRules = currentRules.map((r) => ({ ...r, status: "pending" }));
       renderRules();
       pendingClarification = null;
+      currentGovernanceObject = null;
       break;
 
     case "cycle-plan":
@@ -559,7 +666,7 @@ socket.on("telemetry", (payload) => {
       break;
 
     case "final-output":
-      handleFinalOutput(payload.text);
+      handleFinalOutput(payload);
       break;
 
     case "governance-rules":
@@ -577,6 +684,12 @@ socket.on("telemetry", (payload) => {
     case "mcp-status":
       if (payload.status) {
         setStatus(payload.status);
+      }
+      // Optional: log arbitration / escalation hints if present
+      if (payload.arbitrationSummary) {
+        appendModeratorLog(
+          `Arbitration: ${payload.arbitrationSummary}`
+        );
       }
       break;
 
@@ -604,6 +717,12 @@ socket.on("telemetry", (payload) => {
       updateLedger(payload.entries || []);
       break;
 
+    // Optional meta-telemetry for advanced governance:
+    // inferred rules, ignored rules, deltas, counters, escalations, etc.
+    case "governance-meta":
+      handleGovernanceMeta(payload);
+      break;
+
     default:
       break;
   }
@@ -613,11 +732,41 @@ socket.on("telemetry", (payload) => {
 // FINAL OUTPUT HANDLER
 // ==============================
 
-function handleFinalOutput(text) {
+function handleFinalOutput(payload) {
   isWorkflowRunning = false;
   setStatus("Final");
+
+  // Backward compatible:
+  // - Old style: payload = { type:"final-output", text:"..." }
+  // - New style: payload = { type:"final-output", result:{ ...universal schema... } }
+
+  let displayText = "No final text returned.";
+
+  if (typeof payload === "string") {
+    displayText = payload;
+  } else if (payload && typeof payload === "object") {
+    // Universal governance object support
+    if (payload.result && typeof payload.result === "object") {
+      currentGovernanceObject = payload.result;
+
+      // Prefer FinalGovernedOutput if present
+      if (
+        typeof payload.result.FinalGovernedOutput === "string" &&
+        payload.result.FinalGovernedOutput.trim().length > 0
+      ) {
+        displayText = payload.result.FinalGovernedOutput.trim();
+      } else if (typeof payload.result.text === "string") {
+        displayText = payload.result.text.trim();
+      } else {
+        displayText = JSON.stringify(payload.result, null, 2);
+      }
+    } else if (typeof payload.text === "string") {
+      displayText = payload.text.trim();
+    }
+  }
+
   appendChatMessage({
-    text: text || "No final text returned.",
+    text: displayText,
     sender: "system",
     isFinal: true,
   });
@@ -655,6 +804,63 @@ function handleClarificationRequest(payload) {
     sender: "system",
     text: "Please respond in 1–2 sentences in the chat. Your answer will be applied as a clarified rule for the next cycle.",
   });
+}
+
+// ==============================
+// GOVERNANCE META HANDLER
+// ==============================
+
+function handleGovernanceMeta(payload) {
+  // This is a flexible channel for advanced domain-agnostic behaviors:
+  // - inferredRules
+  // - ignoredRules
+  // - conflicts
+  // - deltas
+  // - countersOrAlternatives
+  // - escalations
+  // - impactScores
+  // - alignmentReasons
+  // We primarily surface these via Moderator log + ledger enrichment.
+
+  if (!payload) return;
+
+  if (Array.isArray(payload.messages)) {
+    payload.messages.forEach((m) => {
+      if (m && m.channel === "moderator") {
+        appendModeratorLog(m.text || "");
+      } else if (m && m.channel === "analytical") {
+        appendAnalyticalLog(m.text || "");
+      } else if (m && m.channel === "creative") {
+        appendCreativeLog(m.text || "");
+      }
+    });
+  }
+
+  if (Array.isArray(payload.updatedRules) && payload.updatedRules.length) {
+    // Merge updated rule info into currentRules by id or text match.
+    const byKey = (r) =>
+      (r.id && String(r.id).toLowerCase()) ||
+      (r.text && r.text.toLowerCase());
+
+    const currentByKey = new Map();
+    currentRules.forEach((r) => {
+      currentByKey.set(byKey(r), r);
+    });
+
+    payload.updatedRules.forEach((uRaw) => {
+      const u = normalizeIncomingRule(uRaw, "user");
+      const key = byKey(u);
+      if (!key) return;
+      if (currentByKey.has(key)) {
+        const existing = currentByKey.get(key);
+        Object.assign(existing, u);
+      } else {
+        currentRules.push(u);
+      }
+    });
+
+    renderRules();
+  }
 }
 
 // ==============================

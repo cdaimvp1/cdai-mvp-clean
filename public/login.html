@@ -1,99 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
-    <title>cd\ai – Governed Demo Login</title>
-    <link rel="stylesheet" href="/static/styles-login.css" />
-    <meta http-equiv="Cache-Control" content="no-store" />
-  </head>
+    <title>cd\ai – Login</title>
+    <link rel="stylesheet" href="/styles-login.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
 
-  <body>
-    <div class="login-root">
-      <div class="login-page">
+<body>
+    <div class="login-container">
+
+        <!-- HEADER -->
+        <header class="login-header">
+            <img src="/assets/logo-login.png" class="header-logo" alt="cdai logo" />
+            <div class="header-title">cd\ai – Governed Artificial Intelligence</div>
+        </header>
+
+        <!-- LOGIN CARD -->
         <div class="login-card">
-          <img
-            src="/assets/logo-login.png"
-            alt="cd\ai"
-            class="login-logo"
-          />
 
-          <h1 class="login-title">cd\ai Governed Demo</h1>
-          <p class="login-subtitle">
-            Private prototype. Access is limited to authorized reviewers.
-          </p>
+            <img src="/assets/logo-login.png" class="login-card-logo" alt="cdai logo" />
 
-          <div class="field-label">Access Password</div>
+            <h1 class="login-title">Sign in to continue</h1>
 
-          <input
-            id="password"
-            type="password"
-            class="password-input"
-            placeholder="Enter password"
-            autocomplete="off"
-          />
+            <form action="/auth/login" method="POST" class="login-form">
 
-          <button id="login-button" class="login-button">
-            Enter
-          </button>
+                <label class="login-label">Username</label>
+                <input 
+                    type="text" 
+                    name="username" 
+                    class="login-input"
+                    required
+                />
 
-          <p id="login-error" class="login-error"></p>
+                <label class="login-label">Password</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    class="login-input"
+                    required
+                />
+
+                <button type="submit" class="login-button">
+                    Sign In
+                </button>
+            </form>
         </div>
-      </div>
 
-      <footer class="app-footer">
-        <img
-          src="/assets/logo-login.png"
-          alt="cd\ai"
-          class="footer-logo"
-        />
-        <div class="footer-text">
-          Copyright 2025 | Change Directories, LLC – Patent Pending Confidential MVP Demo
-        </div>
-      </footer>
+        <!-- FOOTER -->
+        <footer class="login-footer">
+            <img src="/assets/logo-login.png" class="footer-logo" />
+            <div class="footer-text">Copyright 2025 | Change Directories, LLC</div>
+            <div class="footer-text">Patent Pending · Confidential MVP Demo</div>
+        </footer>
+
     </div>
-
-    <script>
-      async function doLogin() {
-        const passwordEl = document.getElementById("password");
-        const errorEl = document.getElementById("login-error");
-        const password = passwordEl.value.trim();
-
-        errorEl.textContent = "";
-
-        if (!password) {
-          errorEl.textContent = "Please enter the access password.";
-          return;
-        }
-
-        try {
-          const res = await fetch("/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password }),
-          });
-
-          if (res.ok) {
-            window.location.href = "/";
-          } else {
-            errorEl.textContent = "Incorrect password. Please try again.";
-          }
-        } catch (err) {
-          console.error("Login error:", err);
-          errorEl.textContent = "Network error. Please try again.";
-        }
-      }
-
-      document
-        .getElementById("login-button")
-        .addEventListener("click", doLogin);
-
-      document
-        .getElementById("password")
-        .addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            doLogin();
-          }
-        });
-    </script>
-  </body>
+</body>
 </html>

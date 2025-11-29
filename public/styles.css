@@ -1,560 +1,401 @@
-/* ========================================================================== */
-/*  GLOBAL RESET & THEME                                                      */
-/* ========================================================================== */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* ============================================================
+   GLOBAL BASE — ChatGPT Dark Theme
+   ============================================================ */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #000000; /* true black page background */
+    color: #E8E8E8;      /* soft white text */
+    overflow: hidden;    /* prevents scrollbars unless panels allow */
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  background: #000000;
-  color: #ffffff;
-  overflow: hidden;
-}
-
-/* Scrollbars: White pill only */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #ffffff;
-}
-
-::-webkit-scrollbar-button {
-  background: #ffffff;
-}
-
-/* ========================================================================== */
-/*  LAYOUT SHELL                                                              */
-/* ========================================================================== */
-
-.app-root {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-/* ========================================================================== */
-/*  HEADER BAR                                                                */
-/* ========================================================================== */
-
+/* ============================================================
+   HEADER
+   ============================================================ */
 .app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid #222222;
-  background: #000000;
+    width: 100%;
+    background: #000000;
+    height: 62px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    border-bottom: 1px solid #1B1B1C;
 }
 
-.app-header-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+.header-logo {
+    height: 34px;
 }
 
-.app-title {
-  font-size: 18px;
-  font-weight: 600;
+.header-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin-top: 2px;
 }
 
-/* Status bubble */
+.header-subtitle {
+    font-size: 12px;
+    color: #9CA3AF;
+    margin-left: 2px;
+}
 
+/* ================= STATUS PILL ================== */
 .status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #111111;
-  border: 1px solid #3a3a3a;
-  color: #ffffff;
-  font-size: 13px;
+    padding: 4px 10px;
+    font-size: 13px;
+    border-radius: 999px;
+    background: #1F2937;
+    color: #FFFFFF;
+    margin-left: auto;
+    margin-right: 10px;
+}
+.status-label-dynamic { font-weight: 600; }
+
+/* colored modes */
+.status-analytical { background: #2563EB; }
+.status-creative   { background: #A855F7; }
+.status-moderator  { background: #10B981; }
+.status-validator  { background: #F59E0B; }
+.status-final      { background: #4ADE80; }
+.status-error      { background: #EF4444; }
+
+/* ============================================================
+   GOVERNANCE CONTROLS
+   ============================================================ */
+.governance-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-left: 20px;
 }
 
-.status-label-fixed {
-  color: #ffffff;
+.gov-label {
+    font-size: 14px;
+    color: #FFFFFF;
+    font-weight: 600;
 }
 
-.status-label-dynamic {
-  font-weight: 600;
+/* slider wrappers */
+.slider-block {
+    display: flex;
+    flex-direction: column;
+    width: 160px;
+    color: #FFFFFF;
+    font-size: 12px;
+    margin-top: 4px;
 }
 
-/* Dynamic colors */
-.status-idle {
-  color: #ffffff;
+.slider-block label {
+    margin-bottom: -2px;
 }
 
-.status-analytical {
-  color: #4db1ff;
+.slider-block .value {
+    text-align: right;
+    margin-top: -14px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: #8BA3FF;
 }
 
-.status-moderator {
-  color: #ffdd7c;
-}
-
-.status-creative {
-  color: #f29bff;
-}
-
-.status-user {
-  color: #ffd4a3;
-}
-
-.status-validator {
-  color: #7bff9a;
-}
-
-.status-final {
-  color: #cccccc;
-}
-
-.status-error {
-  color: #ff6b81;
-}
-
-.app-header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-/* Sliders */
-
-.slider-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.slider-label {
-  font-size: 11px;
-  color: #ffffff;
-}
-
-.slider-value {
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-.header-slider {
-  width: 150px;
-}
-
+/* slider */
 input[type="range"] {
-  appearance: none;
-  height: 4px;
-  background: #333333;
-  outline: none;
-  cursor: pointer;
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #2B2D31;
+    border-radius: 2px;
+    outline: none;
 }
-
 input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  background: #0a84ff;
-  border-radius: 2px;
-  cursor: pointer;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: #007BFF; /* electric blue */
+    border-radius: 50%;
+    cursor: pointer;
 }
 
-/* Performance mode toggle */
-
-.mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* performance mode buttons */
+.mode-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #2D2F33;
+    background: #111213;
+    color: #E5E7EB;
+    cursor: pointer;
+    font-size: 13px;
+    transition: 0.15s;
+}
+.mode-btn.active {
+    border-color: #3B82F6;
+    background: #1E40AF;
 }
 
-.mode-pill {
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 6px 12px;
-  font-size: 12px;
-  cursor: pointer;
+/* logout icon */
+.logout-btn {
+    margin-left: 14px;
+    cursor: pointer;
+    height: 22px;
+    opacity: 0.8;
+    transition: 0.2s;
+}
+.logout-btn:hover {
+    opacity: 1;
 }
 
-.mode-pill.active {
-  background: #0a84ff;
-  border-color: #0a84ff;
+/* ============================================================
+   MAIN GRID LAYOUT — LEFT + RIGHT COLUMN
+   ============================================================ */
+.page-body {
+    display: grid;
+    grid-template-columns: 52% 48%; /* balanced split */
+    height: calc(100vh - 62px - 60px);
+    overflow: hidden;
 }
 
-/* Logout */
-
-.logout-button {
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 6px 14px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-/* ========================================================================== */
-/*  MAIN CONTENT LAYOUT                                                       */
-/* ========================================================================== */
-
-.app-main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-/* 40% left, 60% right */
-
-.pane-left {
-  width: 40%;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 12px;
-  overflow: hidden;
-}
-
-.pane-right {
-  width: 60%;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 12px;
-  overflow: hidden;
-}
-
-/* ========================================================================== */
-/*  PANEL BASE                                                                */
-/* ========================================================================== */
-
+/* ============================================================
+   PANEL BASE STYLE — ChatGPT Gray Panels
+   ============================================================ */
 .panel {
-  background: rgba(160, 160, 160, 0.18);
-  backdrop-filter: blur(14px);
-  border: 1px solid #3a3a3a;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.panel-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+    background: #1F1F22;
+    border: 1px solid #2A2A2D;
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    color: #FFFFFF;
 }
 
 .panel-title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
+    font-size: 13px;
+    font-weight: 700;
+    color: #E5E7EB;
+    margin-bottom: 10px;
+    letter-spacing: 0.3px;
 }
 
-/* Shared scroll area */
-
-.panel-scroll {
-  flex: 1;
-  overflow-y: auto;
+/* ============================================================
+   LEFT COLUMN
+   ============================================================ */
+.left-column {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: auto;
 }
 
-/* ========================================================================== */
-/*  CHAT PANEL                                                                */
-/* ========================================================================== */
-
+/* CHAT PANEL */
 .chat-panel {
-  min-height: 240px;
+    height: 240px;
 }
 
-/* Chat header */
-
-.chat-header-label {
-  font-size: 14px;
-  font-weight: 600;
+#chat-history {
+    background: #111113;
+    border-radius: 8px;
+    padding: 10px;
+    height: 150px;
+    overflow-y: auto;
+    margin-bottom: 10px;
 }
-
-.chat-reset-button {
-  border: 1px solid #444;
-  background: #151515;
-  color: #ffffff;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-/* Chat history */
-
-.chat-history {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 8px;
-  margin-bottom: 8px;
-}
-
-/* Message bubbles */
 
 .chat-message {
-  max-width: 78%;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border-radius: 16px;
-  font-size: 13px;
-  white-space: pre-wrap;
-  line-height: 1.4;
+    margin-bottom: 6px;
+    line-height: 1.35;
+    font-size: 13px;
+    color: #DADADA;
 }
 
-/* User bubble (blue iMessage) */
 .chat-message.user {
-  align-self: flex-end;
-  background: #0a84ff;
-  color: #ffffff;
-  border-bottom-right-radius: 4px;
+    color: #93C5FD;
 }
 
-/* System bubble (grey iMessage left) */
-.chat-message.system {
-  align-self: flex-start;
-  background: #222222;
-  color: #ffffff;
-  border-bottom-left-radius: 4px;
-}
-
-/* Final governed output bubble (green) */
 .chat-message.final {
-  align-self: flex-start;
-  background: linear-gradient(135deg, #24c08a, #3ae7a7);
-  color: #002d1b;
+    color: #4ADE80;
+    font-weight: 600;
 }
-
-/* Chat input row */
 
 .chat-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    gap: 10px;
 }
 
-.chat-input {
-  flex: 1;
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 8px 10px;
-  font-size: 13px;
-  resize: none;
-  outline: none;
-  max-height: 120px;
-  overflow-y: auto;
+#chat-input {
+    flex: 1;
+    background: #111113;
+    border: 1px solid #2C2C30;
+    border-radius: 8px;
+    padding: 10px;
+    color: #FFFFFF;
 }
 
-.chat-send-button {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: #0a84ff;
-  color: #ffffff;
-  font-size: 20px;
-  cursor: pointer;
+.chat-send-btn {
+    height: 36px;
+    width: 36px;
+    background: #1D4ED8;
+    border-radius: 8px;
+    background-image: url('/assets/send-icon.png');
+    background-size: 60%;
+    background-position: center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    border: none;
 }
 
-/* ========================================================================== */
-/*  GOAL / GOVERNANCE RULES PANEL                                             */
-/* ========================================================================== */
-
-.goal-panel textarea {
-  width: 100%;
-  min-height: 220px; 
-  max-height: 380px;
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 8px 10px;
-  font-size: 13px;
-  resize: vertical;
+/* RESET */
+#chat-reset-button {
+    font-size: 12px;
+    margin-left: auto;
+    cursor: pointer;
+    color: #8CA3FF;
 }
 
-/* Buttons */
-
-.goal-controls {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
+/* GOVERNANCE INPUT ROW */
+.gov-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
 }
 
-.goal-button {
-  width: 100px;
-  padding: 7px 14px;
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  font-size: 12px;
-  cursor: pointer;
+.gov-entry-panel {
+    height: 260px;
 }
 
-.goal-button.submit {
-  background: #0a84ff;
-  border-color: #0a84ff;
+#goal-input {
+    width: 100%;
+    height: 160px;
+    padding: 10px;
+    background: #111113;
+    border: 1px solid #2C2C30;
+    border-radius: 8px;
+    color: #FFFFFF;
+    resize: none;
 }
 
-/* ========================================================================== */
-/*  GOVERNANCE RULES DISPLAY PANEL                                            */
-/* ========================================================================== */
-
-.rules-panel {
-  min-height: 220px;
+.entry-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
 }
 
+.gov-submit-btn {
+    width: 36px;
+    height: 36px;
+    background-image: url('/assets/send-icon.png');
+    background-size: 60%;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 8px;
+    background-color: #1D4ED8;
+    border: none;
+    cursor: pointer;
+}
+
+.gov-clear-btn {
+    width: 36px;
+    height: 36px;
+    background-image: url('/assets/clear-icon.png');
+    background-size: 60%;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 8px;
+    background-color: #4B5563;
+    border: none;
+    cursor: pointer;
+}
+
+/* PARSED RULES PANEL */
 .rules-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+    background: #111113;
+    border-radius: 8px;
+    padding: 10px;
+    height: 210px;
+    overflow-y: auto;
 }
 
-.rules-list li {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 12px;
-}
-
-/* Rule dot colors */
-
+.rule-text { font-size: 13px; }
 .rule-status-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 4px;
-  background: #888888;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    display: inline-block;
+}
+.rule-system { color: #38BDF8; }
+.rule-system-generated { color: #7DD3FC; }
+
+/* ============================================================
+   RIGHT COLUMN — Hemispheres + Ledger
+   ============================================================ */
+.right-column {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: auto;
 }
 
-/* status transitions */
-.rule-status-dot.pending {
-  background: #cccccc;
+/* hemisphere panels: each half height */
+.hemi-panel {
+    height: calc((100% - 16px - 260px) / 3);
+    overflow-y: auto;
 }
 
-.rule-status-dot.in-progress {
-  background: #ffd479;
+#analytical-log,
+#creative-log,
+#moderator-log {
+    flex: 1;
+    background: #111113;
+    padding: 10px;
+    border-radius: 8px;
+    overflow-y: auto;
 }
 
-.rule-status-dot.passed {
-  background: #7bff9a;
+/* ledger takes half */
+.ledger-panel {
+    height: calc(50%);
 }
 
-/* meta-governance colors */
-.rule-system-generated {
-  color: #4db1ff;
+#ledger-log {
+    flex: 1;
+    background: #111113;
+    padding: 10px;
+    border-radius: 8px;
+    overflow-y: auto;
 }
 
-.rule-user-clarified {
-  color: #c57dff;
+.download-ledger-btn {
+    align-self: flex-end;
+    font-size: 12px;
+    cursor: pointer;
+    color: #8CA3FF;
 }
 
-/* ========================================================================== */
-/*  LOG PANELS                                                                */
-/* ========================================================================== */
-
-.log-panel {
-  min-height: 140px;
-}
-
-.log-content {
-  flex: 1;
-  overflow-y: auto;
-  font-size: 11px;
-}
-
-/* Log entries */
-
-.log-entry {
-  padding: 4px 4px;
-  margin-bottom: 4px;
-  color: #ffffff;
-}
-
-.log-entry.analytical {
-  border-left: 2px solid #4db1ff;
-  padding-left: 6px;
-}
-
-.log-entry.moderator {
-  border-left: 2px solid #ffdd7c;
-  padding-left: 6px;
-}
-
-.log-entry.creative {
-  border-left: 2px solid #f29bff;
-  padding-left: 6px;
-}
-
-.log-entry.ledger {
-  border-left: 2px solid #7bff9a;
-  padding-left: 6px;
-}
-
-.timestamp {
-  opacity: 0.7;
-  font-size: 10px;
-  margin-right: 4px;
-}
-
-/* Collapse controls */
-
-.chevron-btn {
-  border: 1px solid #444444;
-  background: #151515;
-  color: #ffffff;
-  padding: 3px 6px;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.log-panel.collapsed .log-content {
-  display: none;
-}
-
-/* ========================================================================== */
-/*  FOOTER                                                                    */
-/* ========================================================================== */
-
+/* ============================================================
+   FOOTER
+   ============================================================ */
 .app-footer {
-  background: #000000;
-  text-align: center;
-  padding: 12px 0 10px;
-  border-top: 1px solid #222222;
+    height: 60px;
+    background: #000000;
+    border-top: 1px solid #1B1B1C;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .footer-logo {
-  height: 34px;
-  margin-bottom: 4px;
+    height: 24px;
+    opacity: 0.85;
+    margin-bottom: 4px;
 }
 
 .footer-text {
-  font-size: 11px;
-  color: #ffffff;
-  opacity: 0.7;
-}
-
-/* ========================================================================== */
-/*  RESPONSIVE                                                                */
-/* ========================================================================== */
-
-@media (max-width: 1080px) {
-  .app-main {
-    flex-direction: column;
-  }
-
-  .pane-left,
-  .pane-right {
-    width: 100%;
-  }
+    font-size: 12px;
+    color: #9CA3AF;
+    text-align: center;
 }
