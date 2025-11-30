@@ -1,7 +1,6 @@
 /* ==========================================================================
    GLOBAL RESET + THEME
    ========================================================================== */
-
 *,
 *::before,
 *::after {
@@ -31,11 +30,6 @@ body {
   background: transparent;
 }
 
-/* Small debug flag (optional) */
-.test-flag {
-  display: none;
-}
-
 /* ==========================================================================
    APP LAYOUT
    ========================================================================== */
@@ -46,14 +40,12 @@ body {
   height: 100vh;
 }
 
-/* Main region (between header and footer) */
 .app-main {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* Left = 50%. Right = 50%. */
 .left-column {
   width: 50%;
   display: flex;
@@ -111,7 +103,7 @@ body {
   opacity: 0.7;
 }
 
-/* Header – right side */
+/* Right header controls */
 
 .header-right {
   display: flex;
@@ -120,19 +112,13 @@ body {
   gap: 6px;
 }
 
-.governance-controls-label {
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
 .header-controls-row {
   display: flex;
   align-items: center;
   gap: 18px;
 }
 
-/* Status */
+/* Status pill */
 
 .status-group {
   display: flex;
@@ -219,7 +205,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 3px;
 }
 
-/* Performance mode toggle */
+/* Mode toggle */
 
 .mode-toggle-group {
   display: flex;
@@ -236,17 +222,13 @@ input[type="range"]::-webkit-slider-thumb {
   color: #f9fafb;
 }
 
-.mode-btn:hover {
-  background: #1f2933;
-}
-
 .mode-btn.active {
   background: #0a84ff;
   border-color: #0a84ff;
   color: #ffffff;
 }
 
-/* Logout icon button */
+/* Logout button */
 
 .icon-button {
   background: none;
@@ -255,37 +237,10 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 0;
 }
 
-.logout-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .icon-image {
   width: 26px;
   height: 26px;
   filter: brightness(1.4);
-}
-
-/* Secondary buttons */
-
-.secondary-btn {
-  border-radius: 8px;
-  border: 1px solid #3f3f46;
-  background: #18181b;
-  color: #e5e7eb;
-  font-size: 11px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-.secondary-btn.small-btn {
-  font-size: 11px;
-  padding: 4px 8px;
-}
-
-.secondary-btn:hover {
-  background: #27272f;
 }
 
 /* ==========================================================================
@@ -293,7 +248,7 @@ input[type="range"]::-webkit-slider-thumb {
    ========================================================================== */
 
 .panel {
-  background: #1b1b1f; /* Medium gray */
+  background: #1b1b1f;
   border: 1px solid #2e2e2e;
   border-radius: 10px;
   padding: 10px 12px;
@@ -319,46 +274,34 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   align-items: center;
   gap: 6px;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
 }
 
 .panel-body {
   margin-top: 8px;
   flex: 1;
-  overflow: hidden;
-}
-
-/* Collapsible chevron */
-
-.chevron-btn {
-  background: #151515;
-  border: 1px solid #333333;
-  padding: 3px 8px;
-  cursor: pointer;
-  border-radius: 5px;
-  font-size: 11px;
-  color: #e5e7eb;
-}
-
-.panel.collapsed .panel-body {
-  display: none;
+  overflow: hidden; /* ← prevents second scrollbar */
 }
 
 /* ==========================================================================
-   LEFT COLUMN PANELS
+   LEFT COLUMN
    ========================================================================== */
-
-/* Conversation panel (top ~40%) */
 
 .conversation-panel {
   height: 65%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .conversation-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  flex: 1;
   overflow: hidden;
 }
 
@@ -368,7 +311,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding-right: 6px;
 }
 
-/* Chat messages */
+/* Chat bubbles */
 
 .chat-message {
   padding: 8px 12px;
@@ -392,12 +335,11 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .chat-message.final {
-  align-self: flex-start;
   background: linear-gradient(135deg, #24c08a, #3ae7a7);
   color: #002d1b;
 }
 
-/* Chat input row */
+/* Chat input */
 
 .chat-input-row {
   display: flex;
@@ -414,28 +356,18 @@ input[type="range"]::-webkit-slider-thumb {
   resize: none;
   height: 50px;
   border-radius: 8px;
-  font-size: 13px;
 }
 
-.send-button .icon-image {
-  width: 24px;
-  height: 24px;
-}
-
-/* Bottom of left column: goal + parsed rules (side by side) */
+/* LOWER LEFT — Goal + Parsed Rules */
 
 .left-bottom-row {
   display: flex;
   gap: 12px;
-  height: 35%; /* Remaining height below conversation */
+  height: 35%;
 }
-
-/* Goal panel */
 
 .goal-panel {
   flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
 .goal-input {
@@ -447,10 +379,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 10px;
   resize: none;
   border-radius: 8px;
-  font-size: 13px;
 }
-
-/* Parsed rules panel */
 
 .parsed-rules-panel {
   flex: 1;
@@ -479,48 +408,15 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 12px;
 }
 
-/* Rule status dot */
-
-.rule-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.rule-status-dot.pending {
-  background: #cccccc;
-}
-.rule-status-dot.in-progress {
-  background: #ffd479;
-}
-.rule-status-dot.passed {
-  background: #6effa6;
-}
-
-/* Origin-based coloring */
-
-.rule-system-generated {
-  color: #4db1ff;
-}
-
-.rule-user-clarified {
-  color: #c57dff;
-}
-
 /* ==========================================================================
-   RIGHT COLUMN PANELS
+   RIGHT COLUMN
    ========================================================================== */
-
-/* Right column: top row = 3 hemispheres, bottom = ledger.
-   Both top row and ledger take ~50% each via flex. */
 
 .right-top-row {
   display: flex;
-  flex-direction: row;
   gap: 12px;
-  flex: 1; /* top half */
+  flex: 1;
+  overflow: hidden;
 }
 
 .analytical-panel,
@@ -529,11 +425,12 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .log-body {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto; /* ← correct single scrollbar */
 }
 
 .log-panel .panel-body {
@@ -545,82 +442,42 @@ input[type="range"]::-webkit-slider-thumb {
   overflow-y: auto;
 }
 
-/* Ledger panel occupies bottom half of right column */
+/* Ledger (bottom right) */
 
 .ledger-panel {
-  flex: 1; /* bottom half */
+  flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+#ledger-log {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .log-entry {
   font-size: 11px;
   margin-bottom: 4px;
   line-height: 1.4;
+  padding-left: 6px;
 }
-
-#ledger-log {
-  overflow-y: auto;
-  max-height: 100%;
-}
-
 
 .log-entry.analytical {
   border-left: 2px solid #4db1ff;
-  padding-left: 6px;
 }
 
 .log-entry.moderator {
   border-left: 2px solid #ffdd7c;
-  padding-left: 6px;
 }
 
 .log-entry.creative {
   border-left: 2px solid #f29bff;
-  padding-left: 6px;
 }
 
 .log-entry.ledger {
   border-left: 2px solid #6effa6;
-  padding-left: 6px;
-}
-
-.timestamp {
-  display: inline-block;
-  margin-right: 6px;
-  opacity: 0.7;
-}
-/* ================================================================
-   FIX PANEL SCROLLING BEHAVIOR
-   ================================================================ */
-
-/* Ensure the top-right three log panels do not expand */
-.right-top-row,
-.right-top {
-  height: 50% !important;
-  display: flex;
-  gap: 12px;
-  overflow: hidden;
-}
-
-/* Hemisphere, moderator, creative, and ledger panels */
-.log-panel,
-.hemisphere-panel,
-.moderator-panel,
-.creative-panel,
-.ledger-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Scrolling inside the panel bodies */
-.panel-body,
-.log-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 /* ==========================================================================
@@ -630,14 +487,13 @@ input[type="range"]::-webkit-slider-thumb {
 .app-footer {
   display: flex;
   flex-direction: column;
-  align-items: center;     /* ← centers horizontally */
+  align-items: center;
   justify-content: center;
   padding: 14px 0 12px;
   background: #000;
   border-top: 1px solid #222;
   text-align: center;
 }
-
 
 .footer-logo {
   height: 34px;
@@ -648,22 +504,10 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 11px;
   opacity: 0.75;
 }
-/* Remove unintended box around the Clear/Reset button */
-.panel-header-actions {
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  box-shadow: none !important;
-}
 
-.panel-header-actions .icon-button,
-.panel-header-actions .secondary-btn,
-.panel-header-actions button {
-  background: none;
-  border: none;
-  box-shadow: none;
-}
+/* ==========================================================================
+   REMOVE CHEVRONS
+   ========================================================================== */
 .chevron-btn {
   display: none !important;
 }
