@@ -567,3 +567,14 @@ input[type="range"]::-webkit-slider-thumb {
   color: #ff6b81;
   font-weight: 600;
 }
+#clear-button {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+#clear-button:focus,
+#clear-button:active {
+  background: transparent !important;
+  outline: none !important;
+}
