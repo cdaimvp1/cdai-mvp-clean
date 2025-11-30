@@ -247,30 +247,106 @@ socket.on("telemetry", (msg) => {
     // =========================================================
     // FIXED GOVERNANCE RULE RENDERING (object-aware)
     // =========================================================
-    case "governance-rules":
-      rulesListEl.innerHTML = "";
+case "governance-rules":
+  rulesListEl.innerHTML = "";
 
-      msg.rules.forEach((ruleObj, index) => {
-        const li = document.createElement("li");
-        li.className = "rule-item";
+  const summary = msg.summary || {
+    passed: 0,
+    failed: 0,
+    clarified: 0,
+    total: msg.rules.length || 0,
+  };
 
-        const text = ruleObj.text || ruleObj;
-        const origin = ruleObj.origin || "user";
+  msg.rules.forEach((ruleObj, index) => {
+    const li = document.createElement("li");
+    li.className = "rule-item";
+    li.dataset.index = index;
 
-        // Color coding for dark UI
-        if (origin === "system") {
-          li.style.color = "#00aaff"; // electric blue
-        } else if (origin === "user-clarified") {
-          li.style.color = "#ad7eff"; // purple
-        } else {
-          li.style.color = "#ffffff"; // white
-        }
+    const text = ruleObj.text || ruleObj;
+    const origin = ruleObj.origin || "user";
 
-        li.innerHTML = `
-          <span class="rule-index">${index + 1}.</span>
-          <span class="rule-text">${text}</span>
-          <span class="rule-origin">[${origin}]</span>
-        `;
+    if (origin === "system") li.style.color = "#00aaff";
+    else if (origin === "user-clarified") li.style.color = "#ffd479";
+    else if (origin === "failed") li.style.color = "#ff6b81";
+    else li.style.color = "#ffffff";
+
+    li.innerHTML = `
+      <span class="rule-index">${index + 1}.</span>
+      <span class="rule-text">${text}</span>
+      <span class="rule-origin">[${origin}]</span>
+    `;
+
+    rulesListEl.appendChild(li);
+  });
+
+  const summaryEl = document.getElementById("rules-summary");
+
+  summaryEl.innerHTML = `
+    <div class="summary-title">Governance Compliance Summary</div>
+
+    <div class="summary-pass"   data-target="passed">✔ ${summary.passed} passed</div>
+    <div class="summary-clarified" data-target="clarified">⚠ ${summary.clarified} required clarification</div>
+    <div class="summary-fail"   data-target="failed">✖ ${summary.failed} failed</div>
+
+    <div style="margin-top:6px; opacity:0.7;">
+      Total rules: ${summary.total}
+    </div>
+  `;
+
+  // ------------------------------------------
+  // CLICKABLE SUMMARY (scroll + highlight)
+  // ------------------------------------------
+  summaryEl.querySelectorAll("[data-target]").forEach((el) => {
+    el.style.cursor = "pointer";
+
+    el.addEventListener("click", () => {
+      const type = el.dataset.target;
+      const items = Array.from(rulesListEl.children).filter((li) =>
+        li.querySelector(".rule-origin")?.textContent.includes(type)
+      );
+
+      if (!items.length) return;
+
+      const first = items[0];
+      first.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      items.forEach((li) => {
+        li.style.background = "rgba(255,255,255,0.08)";
+        setTimeout(() => {
+          li.style.background = "transparent";
+        }, 1100);
+      });
+    });
+  });
+  break;
+
+
+  // ================================================================
+  // SUMMARY BLOCK
+  // Server sends: msg.summary = { passed, failed, clarified, total }
+  // ================================================================
+  const summary = msg.summary || {
+    passed: 0,
+    failed: 0,
+    clarified: 0,
+    total: msg.rules.length || 0,
+  };
+
+  const summaryEl = document.getElementById("rules-summary");
+
+  summaryEl.innerHTML = `
+    <div class="summary-title">Governance Compliance Summary</div>
+
+    <div><span class="summary-pass">✔ ${summary.passed}</span> passed</div>
+    <div><span class="summary-clarified">⚠ ${summary.clarified}</span> required clarification</div>
+    <div><span class="summary-fail">✖ ${summary.failed}</span> failed</div>
+
+    <div style="margin-top:6px; opacity:0.7;">
+      Total rules: ${summary.total}
+    </div>
+  `;
+  break;
+
 
         rulesListEl.appendChild(li);
       });

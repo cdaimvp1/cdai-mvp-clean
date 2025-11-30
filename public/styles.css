@@ -407,6 +407,29 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 4px 0;
   font-size: 12px;
 }
+.rule-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.rule-item {
+  transition: background 0.4s ease;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.rule-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rule-origin {
+  opacity: 0.6;
+  font-size: 11px;
+}
 
 /* ==========================================================================
    RIGHT COLUMN
@@ -510,4 +533,37 @@ input[type="range"]::-webkit-slider-thumb {
    ========================================================================== */
 .chevron-btn {
   display: none !important;
+}
+/* Rule Compliance Summary */
+.rules-summary {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #111;
+  border: 1px solid #333;
+  font-size: 12px;
+  color: #e5e7eb;
+}
+
+.rules-summary .summary-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.rules-summary .summary-pass {
+  color: #6effa6;
+  font-weight: 600;
+}
+
+.rules-summary .summary-clarified {
+  color: #ffd479;
+  font-weight: 600;
+}
+
+.rules-summary .summary-fail {
+  color: #ff6b81;
+  font-weight: 600;
 }
