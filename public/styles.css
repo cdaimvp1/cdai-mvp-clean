@@ -585,3 +585,11 @@ button:focus-visible {
   border: none !important;
   box-shadow: none !important;
 }
+/* Remove ghost box around Refresh/Clear container */
+.header-controls-row {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
