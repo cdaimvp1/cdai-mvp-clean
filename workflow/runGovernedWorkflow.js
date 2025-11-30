@@ -6,6 +6,7 @@ require("dotenv").config();
 // --- OpenAI config -----------------------------------------------------------
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// You can swap this later if you want, but keeping as-is for now:
 const MODEL_NAME = "gpt-4o";
 
 if (!OPENAI_API_KEY) {
@@ -204,7 +205,6 @@ async function runGovernedWorkflow(
   socket,
   { input, goal, maxCycles, governanceStrictness, perfMode }
 ) {
-  // Normalize knobs here so server.js can stay thin.
   const effectiveMaxCycles = normalizeMaxCycles(maxCycles);
   const effectiveStrictness = normalizeStrictness(governanceStrictness);
   const mode = normalizePerfMode(perfMode);
@@ -293,230 +293,253 @@ async function runGovernedWorkflow(
   // --- Dual-hemisphere cycles -----------------------------------------------
 
   for (let cycle = 1; cycle <= plannedCycles; cycle++) {
-    socket.emit("telemetry", { type: "cycle-update", cycle });
-    socket.emit("telemetry", {
-      type: "governance-rules-progress",
-      cycle,
-    });
-
-    // ---- Analytical --------------------------------------------------------
-    socket.emit("telemetry", {
-      type: "mcp-status",
-      status: "Analytical Pass",
-      detail: `Cycle ${cycle}: analytical hemisphere enforcing governance constraints.`,
-    });
-
-    const analyticalResult = await analyticalPass(currentText, {
-      input,
-      rules,
-      governanceStrictness: effectiveStrictness,
-    });
-
-    currentText = analyticalResult.rewrittenText;
-    validation = analyticalResult.validation;
-
-    // Meta-governance: handle inferred constraints from this cycle
-    const mediumCandidates = applyInferredConstraints({
-      candidates: analyticalResult.inferredConstraints,
-      rules,
-      ledger,
-      socket,
-      cycle,
-    });
-
-    ledger.push({
-      timestamp: new Date().toISOString(),
-      stage: "Analytical",
-      cycle,
-      summary: analyticalResult.deltaSummary,
-      snippet: currentText.slice(0, 260),
-    });
-
-    socket.emit("telemetry", {
-      type: "hemisphere-log",
-      hemisphere: "A",
-      message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
-    });
-
-    // ---- Moderator ---------------------------------------------------------
-    socket.emit("telemetry", {
-      type: "mcp-status",
-      status: "Moderator",
-      detail: `Cycle ${cycle}: moderator tightening the creative prompt to prevent reintroducing violations and manage inferred constraints.`,
-    });
-
-    const moderatorResult = await moderatorPass(currentText, {
-      input,
-      rules,
-      governanceStrictness: effectiveStrictness,
-      analyticalSummary: analyticalResult.deltaSummary,
-      directives: analyticalResult.directives,
-      validation,
-      mediumCandidates,
-    });
-
-    ledger.push({
-      timestamp: new Date().toISOString(),
-      stage: "Moderator",
-      cycle,
-      summary: moderatorResult.moderatorSummary,
-      snippet: currentText.slice(0, 260),
-    });
-
-    socket.emit("telemetry", {
-      type: "moderator-log",
-      message: `Cycle ${cycle}: ${moderatorResult.moderatorSummary} ${
-        typeof moderatorResult.confidence === "number"
-          ? `(confidence ${moderatorResult.confidence.toFixed(2)})`
-          : ""
-      }`.trim(),
-    });
-
-    // ---- Optional: user clarification loop --------------------------------
-
-    let userFeedback = null;
-
-    if (
-      moderatorResult.needsUserClarification &&
-      clarificationCount < 2 &&
-      mode !== "turbo"
-    ) {
-      clarificationCount += 1;
-
-      const question =
-        moderatorResult.userQuestion ||
-        "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1–2 sentences.";
-
+    try {
+      socket.emit("telemetry", { type: "cycle-update", cycle });
       socket.emit("telemetry", {
-        type: "clarification-request",
-        question,
-        confidence: moderatorResult.confidence ?? null,
+        type: "governance-rules-progress",
+        cycle,
+      });
+
+      // ---- Analytical ------------------------------------------------------
+      socket.emit("telemetry", {
+        type: "mcp-status",
+        status: "Analytical Pass",
+        detail: `Cycle ${cycle}: analytical hemisphere enforcing governance constraints.`,
+      });
+
+      const analyticalResult = await analyticalPass(currentText, {
+        input,
+        rules,
+        governanceStrictness: effectiveStrictness,
+      });
+
+      // analyticalPass is now hardened to always return a safe object
+      currentText = analyticalResult.rewrittenText;
+      validation = analyticalResult.validation || initialValidationState();
+
+      // Meta-governance: handle inferred constraints from this cycle
+      const mediumCandidates = applyInferredConstraints({
+        candidates: analyticalResult.inferredConstraints,
+        rules,
+        ledger,
+        socket,
         cycle,
       });
 
       ledger.push({
         timestamp: new Date().toISOString(),
-        stage: "ClarificationRequest",
+        stage: "Analytical",
         cycle,
-        summary: `Moderator requested user clarification: "${question.slice(
-          0,
-          200
-        )}"`,
-        snippet: currentText.slice(0, 200),
+        summary: analyticalResult.deltaSummary,
+        snippet: currentText.slice(0, 260),
       });
 
-      userFeedback = await waitForUserClarification(socket, { cycle });
+      socket.emit("telemetry", {
+        type: "hemisphere-log",
+        hemisphere: "A",
+        message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
+      });
 
-      if (userFeedback) {
-        ledger.push({
-          timestamp: new Date().toISOString(),
-          stage: "UserFeedback",
-          cycle,
-          summary:
-            "User clarification received and will be incorporated as a user-authorized constraint.",
-          snippet: userFeedback.slice(0, 200),
-        });
+      // ---- Moderator -------------------------------------------------------
+      socket.emit("telemetry", {
+        type: "mcp-status",
+        status: "Moderator",
+        detail: `Cycle ${cycle}: moderator tightening the creative prompt to prevent reintroducing violations and manage inferred constraints.`,
+      });
 
-        // Add as user-authorized rule (purple in UI)
-        const clarifiedRule = {
-          text: userFeedback,
-          origin: "user-clarified",
-          status: "pending",
-        };
-        rules.push(clarifiedRule);
+      const moderatorResult = await moderatorPass(currentText, {
+        input,
+        rules,
+        governanceStrictness: effectiveStrictness,
+        analyticalSummary: analyticalResult.deltaSummary,
+        directives: analyticalResult.directives,
+        validation,
+        mediumCandidates,
+      });
+
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "Moderator",
+        cycle,
+        summary: moderatorResult.moderatorSummary,
+        snippet: currentText.slice(0, 260),
+      });
+
+      socket.emit("telemetry", {
+        type: "moderator-log",
+        message: `Cycle ${cycle}: ${moderatorResult.moderatorSummary} ${
+          typeof moderatorResult.confidence === "number"
+            ? `(confidence ${moderatorResult.confidence.toFixed(2)})`
+            : ""
+        }`.trim(),
+      });
+
+      // ---- Optional: user clarification loop ------------------------------
+
+      let userFeedback = null;
+
+      if (
+        moderatorResult.needsUserClarification &&
+        clarificationCount < 2 &&
+        mode !== "turbo"
+      ) {
+        clarificationCount += 1;
+
+        const question =
+          moderatorResult.userQuestion ||
+          "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1–2 sentences.";
 
         socket.emit("telemetry", {
-          type: "governance-rules",
-          rules,
+          type: "clarification-request",
+          question,
+          confidence: moderatorResult.confidence ?? null,
+          cycle,
         });
 
         ledger.push({
           timestamp: new Date().toISOString(),
-          stage: "MetaGovernance",
+          stage: "ClarificationRequest",
           cycle,
-          summary:
-            "User clarification converted into a user-authorized governance rule and will be enforced from the next cycle.",
-          snippet: userFeedback.slice(0, 260),
-        });
-
-        socket.emit("telemetry", {
-          type: "moderator-log",
-          message:
-            "Cycle " +
-            cycle +
-            ": user clarification received and injected into the MCP prompt as a new rule.",
-        });
-      } else {
-        ledger.push({
-          timestamp: new Date().toISOString(),
-          stage: "ClarificationTimeout",
-          cycle,
-          summary:
-            "No user clarification received within the time window; MCP continued using existing assumptions.",
+          summary: `Moderator requested user clarification: "${question.slice(
+            0,
+            200
+          )}"`,
           snippet: currentText.slice(0, 200),
         });
 
-        socket.emit("telemetry", {
-          type: "moderator-log",
-          message:
-            "Cycle " +
-            cycle +
-            ": no user clarification received in time; continued with existing interpretation.",
-        });
+        userFeedback = await waitForUserClarification(socket, { cycle });
+
+        if (userFeedback) {
+          ledger.push({
+            timestamp: new Date().toISOString(),
+            stage: "UserFeedback",
+            cycle,
+            summary:
+              "User clarification received and will be incorporated as a user-authorized constraint.",
+            snippet: userFeedback.slice(0, 200),
+          });
+
+          // Add as user-authorized rule (purple in UI)
+          const clarifiedRule = {
+            text: userFeedback,
+            origin: "user-clarified",
+            status: "pending",
+          };
+          rules.push(clarifiedRule);
+
+          socket.emit("telemetry", {
+            type: "governance-rules",
+            rules,
+          });
+
+          ledger.push({
+            timestamp: new Date().toISOString(),
+            stage: "MetaGovernance",
+            cycle,
+            summary:
+              "User clarification converted into a user-authorized governance rule and will be enforced from the next cycle.",
+            snippet: userFeedback.slice(0, 260),
+          });
+
+          socket.emit("telemetry", {
+            type: "moderator-log",
+            message:
+              "Cycle " +
+              cycle +
+              ": user clarification received and injected into the MCP prompt as a new rule.",
+          });
+        } else {
+          ledger.push({
+            timestamp: new Date().toISOString(),
+            stage: "ClarificationTimeout",
+            cycle,
+            summary:
+              "No user clarification received within the time window; MCP continued using existing assumptions.",
+            snippet: currentText.slice(0, 200),
+          });
+
+          socket.emit("telemetry", {
+            type: "moderator-log",
+            message:
+              "Cycle " +
+              cycle +
+              ": no user clarification received in time; continued with existing interpretation.",
+          });
+        }
       }
-    }
 
-    // ---- Creative ----------------------------------------------------------
-    socket.emit("telemetry", {
-      type: "mcp-status",
-      status: "Creative Pass",
-      detail:
-        "Creative hemisphere refining tone and readability within moderated constraints.",
-    });
+      // ---- Creative --------------------------------------------------------
+      socket.emit("telemetry", {
+        type: "mcp-status",
+        status: "Creative Pass",
+        detail:
+          "Creative hemisphere refining tone and readability within moderated constraints.",
+      });
 
-    const creativeResult = await creativePass(currentText, {
-      input,
-      rules,
-      governanceStrictness: effectiveStrictness,
-      moderatedPrompt: moderatorResult.moderatedPrompt,
-      userFeedback,
-    });
+      const creativeResult = await creativePass(currentText, {
+        input,
+        rules,
+        governanceStrictness: effectiveStrictness,
+        moderatedPrompt: moderatorResult.moderatedPrompt,
+        userFeedback,
+      });
 
-    currentText = creativeResult.rewrittenText;
+      currentText = creativeResult.rewrittenText;
 
-    ledger.push({
-      timestamp: new Date().toISOString(),
-      stage: "Creative",
-      cycle,
-      summary: creativeResult.deltaSummary,
-      snippet: currentText.slice(0, 260),
-    });
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "Creative",
+        cycle,
+        summary: creativeResult.deltaSummary,
+        snippet: currentText.slice(0, 260),
+      });
 
-    socket.emit("telemetry", {
-      type: "hemisphere-log",
-      hemisphere: "B",
-      message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
-    });
+      socket.emit("telemetry", {
+        type: "hemisphere-log",
+        hemisphere: "B",
+        message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
+      });
 
-    // ---- Validator ---------------------------------------------------------
-    const postCreativeValidation = await validatorPass(currentText, {
-      input,
-      rules,
-      governanceStrictness: effectiveStrictness,
-    });
+      // ---- Validator -------------------------------------------------------
+      const postCreativeValidation = await validatorPass(currentText, {
+        input,
+        rules,
+        governanceStrictness: effectiveStrictness,
+      });
 
-    validation = postCreativeValidation;
+      validation = postCreativeValidation;
 
-    ledger.push({
-      timestamp: new Date().toISOString(),
-      stage: "Validator",
-      cycle,
-      summary: validationSummary(validation),
-      snippet: currentText.slice(0, 260),
-    });
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "Validator",
+        cycle,
+        summary: validationSummary(validation),
+        snippet: currentText.slice(0, 260),
+      });
 
-    if (validation.isCompliant && cycle >= minCycles) {
-      converged = true;
+      if (validation.isCompliant && cycle >= minCycles) {
+        converged = true;
+        break;
+      }
+    } catch (err) {
+      console.error("[cd/ai] Error inside governed cycle:", err);
+
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "MCPError",
+        cycle,
+        summary:
+          "MCP encountered an internal error this cycle. Failing closed with the best-known compliant draft.",
+        snippet: (currentText || "").slice(0, 260),
+      });
+
+      socket.emit("telemetry", {
+        type: "moderator-log",
+        message:
+          "MCP encountered an internal error this cycle. Output was locked using the best-known compliant draft.",
+      });
+
+      // Fail-safe stop
       break;
     }
   }
@@ -528,7 +551,7 @@ async function runGovernedWorkflow(
     status: "Finalized",
     detail: converged
       ? "Governed output locked after dual-hemisphere convergence and meta-governance decisions."
-      : "Locked after max cycles (fail-safe stop).",
+      : "Locked after max cycles or safety stop (fail-safe closure).",
   });
 
   socket.emit("telemetry", { type: "ledger", entries: ledger });
@@ -655,7 +678,11 @@ honor that format in your draft, as long as it does not directly conflict with t
     temperature: 0.5,
   });
 
-  return draft;
+  if (!draft || typeof draft !== "string" || draft.trim().length < 3) {
+    return `Initial draft based on: "${input}"`;
+  }
+
+  return draft.trim();
 }
 
 async function analyticalPass(
@@ -724,35 +751,76 @@ If you suggest inferredConstraints, they MUST be grounded in the task or hints a
     response_format: "json",
   });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
     return {
       rewrittenText: currentText,
       directives: [],
       validation: initialValidationState(),
       inferredConstraints: [],
       deltaSummary:
-        "Analytical hemisphere encountered a parsing issue and preserved the previous draft.",
+        "Analytical hemisphere fallback: invalid or empty response from OpenAI; previous draft preserved.",
     };
   }
 
+  let parsed = null;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error("[cd/ai] Analytical JSON parse error:", err);
+    return {
+      rewrittenText: currentText,
+      directives: [],
+      validation: initialValidationState(),
+      inferredConstraints: [],
+      deltaSummary:
+        "Analytical hemisphere fallback: JSON parse failed; previous draft preserved.",
+    };
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      rewrittenText: currentText,
+      directives: [],
+      validation: initialValidationState(),
+      inferredConstraints: [],
+      deltaSummary:
+        "Analytical hemisphere fallback: parsed response was not a valid object; previous draft preserved.",
+    };
+  }
+
+  const rewrittenText =
+    typeof parsed.rewrittenText === "string" &&
+    parsed.rewrittenText.trim().length > 0
+      ? parsed.rewrittenText
+      : currentText;
+
+  const directives = Array.isArray(parsed.directives)
+    ? parsed.directives
+    : [];
+
+  const inferredConstraints = Array.isArray(parsed.inferredConstraints)
+    ? parsed.inferredConstraints
+    : [];
+
   const validation = {
     ...initialValidationState(),
-    ...(parsed.validation || {}),
+    ...(parsed.validation && typeof parsed.validation === "object"
+      ? parsed.validation
+      : {}),
   };
 
+  const deltaSummary =
+    typeof parsed.deltaSummary === "string" && parsed.deltaSummary.trim()
+      ? parsed.deltaSummary
+      : "Analytical hemisphere updated structure and governance alignment.";
+
   return {
-    rewrittenText: parsed.rewrittenText || currentText,
-    directives: Array.isArray(parsed.directives) ? parsed.directives : [],
-    inferredConstraints: Array.isArray(parsed.inferredConstraints)
-      ? parsed.inferredConstraints
-      : [],
+    rewrittenText,
+    directives,
+    inferredConstraints,
     validation,
-    deltaSummary:
-      parsed.deltaSummary ||
-      "Analytical hemisphere updated structure and governance alignment.",
+    deltaSummary,
   };
 }
 
@@ -841,13 +909,10 @@ Guidance:
     response_format: "json",
   });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
     return {
       moderatedPrompt:
-        "You are the Creative hemisphere. Improve readability and flow without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
+        "You are the Creative hemisphere. Improve clarity and readability without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
       moderatorSummary:
         "Moderator fallback: used a default conservative prompt to keep Creative changes bounded.",
       confidence: 0.6,
@@ -856,17 +921,62 @@ Guidance:
     };
   }
 
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error("[cd/ai] Moderator JSON parse error:", err);
+    return {
+      moderatedPrompt:
+        "You are the Creative hemisphere. Improve clarity and readability without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
+      moderatorSummary:
+        "Moderator fallback: JSON parse failed; used a default conservative prompt.",
+      confidence: 0.6,
+      needsUserClarification: false,
+      userQuestion: null,
+    };
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      moderatedPrompt:
+        "You are the Creative hemisphere. Improve clarity and readability without relaxing any governance constraints or reintroducing forbidden terms. Keep the length and structure close to the current draft.",
+      moderatorSummary:
+        "Moderator fallback: parsed response was not a valid object; used a default conservative prompt.",
+      confidence: 0.6,
+      needsUserClarification: false,
+      userQuestion: null,
+    };
+  }
+
+  const moderatedPrompt =
+    typeof parsed.moderatedPrompt === "string" &&
+    parsed.moderatedPrompt.trim().length > 0
+      ? parsed.moderatedPrompt
+      : "You are the Creative hemisphere. Improve clarity, flow, and tone without relaxing any governance constraints or reintroducing forbidden terms.";
+
+  const moderatorSummary =
+    typeof parsed.moderatorSummary === "string" &&
+    parsed.moderatorSummary.trim().length > 0
+      ? parsed.moderatorSummary
+      : "Moderator constrained Creative behavior to focus on clarity and tone without weakening governance alignment.";
+
+  const confidence =
+    typeof parsed.confidence === "number" ? parsed.confidence : 0.7;
+
+  const needsUserClarification = !!parsed.needsUserClarification;
+
+  const userQuestion =
+    typeof parsed.userQuestion === "string" && parsed.userQuestion.trim()
+      ? parsed.userQuestion
+      : null;
+
   return {
-    moderatedPrompt:
-      parsed.moderatedPrompt ||
-      "You are the Creative hemisphere. Improve readability and flow without relaxing any governance constraints or reintroducing forbidden terms.",
-    moderatorSummary:
-      parsed.moderatorSummary ||
-      "Moderator constrained Creative behavior to focus on clarity and tone without weakening governance alignment.",
-    confidence:
-      typeof parsed.confidence === "number" ? parsed.confidence : 0.7,
-    needsUserClarification: !!parsed.needsUserClarification,
-    userQuestion: parsed.userQuestion || null,
+    moderatedPrompt,
+    moderatorSummary,
+    confidence,
+    needsUserClarification,
+    userQuestion,
   };
 }
 
@@ -918,22 +1028,49 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
     response_format: "json",
   });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
     return {
       rewrittenText: currentText,
       deltaSummary:
-        "Creative hemisphere encountered a parsing issue and preserved the prior draft.",
+        "Creative hemisphere fallback: invalid or empty response; preserved prior draft.",
     };
   }
 
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    console.error("[cd/ai] Creative JSON parse error:", err);
+    return {
+      rewrittenText: currentText,
+      deltaSummary:
+        "Creative hemisphere fallback: JSON parse failed; preserved prior draft.",
+    };
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      rewrittenText: currentText,
+      deltaSummary:
+        "Creative hemisphere fallback: parsed response was not an object; preserved prior draft.",
+    };
+  }
+
+  const rewrittenText =
+    typeof parsed.rewrittenText === "string" &&
+    parsed.rewrittenText.trim().length > 0
+      ? parsed.rewrittenText
+      : currentText;
+
+  const deltaSummary =
+    typeof parsed.deltaSummary === "string" &&
+    parsed.deltaSummary.trim().length > 0
+      ? parsed.deltaSummary
+      : "Creative hemisphere refined clarity, flow, and tone while respecting governance constraints.";
+
   return {
-    rewrittenText: parsed.rewrittenText || currentText,
-    deltaSummary:
-      parsed.deltaSummary ||
-      "Creative hemisphere refined clarity, flow, and tone while respecting governance constraints.",
+    rewrittenText,
+    deltaSummary,
   };
 }
 
@@ -975,10 +1112,19 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
     response_format: "json",
   });
 
-  let parsed;
+  if (!raw || typeof raw !== "string" || raw.trim().length < 5) {
+    return initialValidationState();
+  }
+
+  let parsed = null;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (err) {
+    console.error("[cd/ai] Validator JSON parse error:", err);
+    return initialValidationState();
+  }
+
+  if (!parsed || typeof parsed !== "object") {
     return initialValidationState();
   }
 
@@ -1037,7 +1183,14 @@ async function callOpenAIChat({
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() || null;
+    const content = data?.choices?.[0]?.message?.content;
+
+    if (!content || typeof content !== "string") {
+      console.error("[cd/ai] OpenAI returned empty or non-string content.");
+      return null;
+    }
+
+    return content.trim();
   } catch (err) {
     console.error("[cd/ai] OpenAI call error:", err);
     return null;
