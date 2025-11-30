@@ -413,11 +413,6 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 8px;
   padding: 4px 0;
 }
-.rule-item {
-  transition: background 0.4s ease;
-  padding: 4px 6px;
-  border-radius: 6px;
-}
 
 .rule-status-dot {
   width: 10px;
@@ -567,14 +562,26 @@ input[type="range"]::-webkit-slider-thumb {
   color: #ff6b81;
   font-weight: 600;
 }
-#clear-button {
+/* Remove white box behind Clear/Refresh button */
+button,
+button *,
+.utility-buttons,
+.utility-buttons *,
+.header-buttons,
+.header-buttons * {
   background: transparent !important;
   box-shadow: none !important;
-  border: none !important;
-  outline: none !important;
 }
-#clear-button:focus,
-#clear-button:active {
-  background: transparent !important;
+
+/* Kill focus/active highlight */
+button:focus,
+button:active,
+button:focus-visible {
   outline: none !important;
+  background: transparent !important;
+}
+.governance-buttons {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
