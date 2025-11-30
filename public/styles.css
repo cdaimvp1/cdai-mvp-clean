@@ -593,3 +593,12 @@ button:focus-visible {
   padding: 0 !important;
   margin: 0 !important;
 }
+.secondary-btn,
+.small-btn {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
