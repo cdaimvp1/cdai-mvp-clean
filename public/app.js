@@ -77,7 +77,6 @@ function appendMessage(text, className) {
   div.className = className;
   div.textContent = text;
 
-  // Fade-in animation
   div.style.opacity = 0;
   div.style.transition = "opacity 0.25s ease";
 
@@ -121,7 +120,7 @@ function clearLogs() {
 }
 
 // =============================================================
-// SEND MESSAGE (with debounce to prevent double-send)
+// SEND MESSAGE
 // =============================================================
 function sendUserMessage(text) {
   if (sendCooldown) return;
@@ -146,13 +145,11 @@ function sendUserMessage(text) {
 // EVENT LISTENERS
 // =============================================================
 
-// Chat send
 chatSendButtonEl?.addEventListener("click", () => {
   const text = chatInputEl.value.trim();
   if (text) sendUserMessage(text);
 });
 
-// Enter key to send
 chatInputEl?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -188,7 +185,7 @@ logoutButtonEl?.addEventListener("click", async () => {
 });
 
 // =============================================================
-// SLIDER & MODE UI
+// SLIDERS & MODES
 // =============================================================
 strictnessSliderEl?.addEventListener("input", () => {
   strictnessValueEl.textContent = strictnessSliderEl.value;
@@ -247,14 +244,39 @@ socket.on("telemetry", (msg) => {
         "status-label-dynamic status-" + msg.status.toLowerCase();
       break;
 
+    // =========================================================
+    // FIXED GOVERNANCE RULE RENDERING (object-aware)
+    // =========================================================
     case "governance-rules":
       rulesListEl.innerHTML = "";
-      msg.rules.forEach((rule) => {
+
+      msg.rules.forEach((ruleObj, index) => {
         const li = document.createElement("li");
-        li.textContent = rule;
+        li.className = "rule-item";
+
+        const text = ruleObj.text || ruleObj;
+        const origin = ruleObj.origin || "user";
+
+        // Color coding for dark UI
+        if (origin === "system") {
+          li.style.color = "#00aaff"; // electric blue
+        } else if (origin === "user-clarified") {
+          li.style.color = "#ad7eff"; // purple
+        } else {
+          li.style.color = "#ffffff"; // white
+        }
+
+        li.innerHTML = `
+          <span class="rule-index">${index + 1}.</span>
+          <span class="rule-text">${text}</span>
+          <span class="rule-origin">[${origin}]</span>
+        `;
+
         rulesListEl.appendChild(li);
       });
       break;
+
+    // =========================================================
 
     case "hemisphere-log":
       if (msg.hemisphere === "A") {
