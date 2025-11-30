@@ -590,6 +590,38 @@ input[type="range"]::-webkit-slider-thumb {
   margin-right: 6px;
   opacity: 0.7;
 }
+/* ================================================================
+   FIX PANEL SCROLLING BEHAVIOR
+   ================================================================ */
+
+/* Ensure the top-right three log panels do not expand */
+.right-top-row,
+.right-top {
+  height: 50% !important;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* Hemisphere, moderator, creative, and ledger panels */
+.log-panel,
+.hemisphere-panel,
+.moderator-panel,
+.creative-panel,
+.ledger-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scrolling inside the panel bodies */
+.panel-body,
+.log-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
 /* ==========================================================================
    FOOTER
