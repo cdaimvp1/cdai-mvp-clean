@@ -4,16 +4,11 @@
     <meta charset="UTF-8" />
     <title>cd\ai – Governed Artificial Intelligence MVP</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Main styles -->
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="test-flag"></div>
     <div class="app-shell">
-      <!-- ========================================================= -->
       <!-- HEADER -->
-      <!-- ========================================================= -->
       <header class="app-header">
         <div class="header-left">
           <img
@@ -22,19 +17,14 @@
             class="header-logo"
           />
           <div class="header-title-block">
-            <div class="app-title">
-              cd\ai – Governed Artificial Intelligence MVP
-            </div>
+            <div class="app-title">cd\ai – Governed Artificial Intelligence MVP</div>
             <div class="app-subtitle">
-              Demonstration of real-time governed convergence across analytical
-              and creative hemispheres.
+              Demonstration of real-time governed convergence across analytical and creative hemispheres.
             </div>
           </div>
         </div>
 
         <div class="header-right">
-          
-
           <div class="header-controls-row">
             <div class="status-group">
               <span class="status-label-static">Status:</span>
@@ -45,10 +35,13 @@
               >
             </div>
 
+            <div class="gil-indicator-wrap">
+              <span class="gil-label">GIL</span>
+              <span id="gil-indicator" class="gil-indicator-dot"></span>
+            </div>
+
             <div class="slider-group">
-              <label for="strictness-slider" class="slider-label"
-                >Strictness</label
-              >
+              <label for="strictness-slider" class="slider-label">Strictness</label>
               <div class="slider-with-value">
                 <input
                   type="range"
@@ -62,13 +55,13 @@
               </div>
             </div>
 
-            <div class="slider-group">
-              <label for="cycle-slider" class="slider-label">Max Cycles</label>
+            <div class="cycle-limit-group">
+              <label class="slider-label">Cycle Limit</label>
               <div class="slider-with-value">
                 <input
                   type="range"
                   id="cycle-slider"
-                  min="1"
+                  min="0"
                   max="10"
                   step="1"
                   value="5"
@@ -78,47 +71,63 @@
             </div>
 
             <div class="mode-toggle-group">
-  <button id="mode-real" class="mode-btn active">Real</button>
-  <button id="mode-fast" class="mode-btn">Fast</button>
-  <button id="mode-turbo" class="mode-btn">Turbo</button>
-</div>
+              <button id="mode-real" class="mode-btn active">Real</button>
+              <button id="mode-fast" class="mode-btn">Fast</button>
+              <button id="mode-turbo" class="mode-btn">Turbo</button>
+            </div>
 
-<button
-  id="logout-button"
-  class="icon-button logout-button"
-  title="Logout"
->
-  <img
-    src="/assets/logout-icon.png"
-    alt="Logout"
-    class="icon-image"
-  />
-</button>
-
+            <button id="logout-button" class="icon-button logout-button" title="Logout">
+              <svg class="icon-image" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="none"
+                  stroke="white"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16 17l5-5-5-5"
+                />
+                <path
+                  fill="none"
+                  stroke="white"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M21 12H9"
+                />
+                <path
+                  fill="none"
+                  stroke="white"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
 
-      <!-- ========================================================= -->
-      <!-- MAIN LAYOUT -->
-      <!-- ========================================================= -->
+      <!-- MAIN -->
       <main class="app-main">
-        <!-- ================= LEFT COLUMN (50%) =================== -->
+        <!-- LEFT COLUMN -->
         <section class="left-column">
-          <!-- Governance Conversation Panel -->
+          <!-- Conversation Panel -->
           <div class="panel conversation-panel">
             <div class="panel-header">
-              <div class="panel-title">
-                GOVERNANCE CONVERSATION · USER ↔ MCP
-              </div>
+              <div class="panel-title">GOVERNANCE CONVERSATION · USER ↔ MCP</div>
               <div class="panel-header-actions">
-                <button
-                  id="chat-reset-button"
-                  class="secondary-btn small-btn"
-                  type="button"
-                >
-                  <img src="/assets/clear-icon.png" alt="Clear" class="icon-image" />
-
+                <button id="chat-reset-button" class="icon-button small-btn" type="button" title="Clear chat">
+                  <svg class="icon-image" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="none"
+                      stroke="white"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M4.93 4.93a10 10 0 1 1 0 14.14M4 10v4h4"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -138,63 +147,47 @@
                   type="button"
                   title="Send"
                 >
-                  <img
-                    src="/assets/send-icon.png"
-                    alt="Send"
-                    class="icon-image"
-                  />
+                  <svg class="icon-image" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="none"
+                      stroke="white"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 12h14M13 6l6 6-6 6"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Goal + Parsed Rules Row -->
-          <div class="left-bottom-row">
-            <!-- Goal & Governance Rules -->
-            <div class="panel goal-panel">
-              <div class="panel-header">
-                <div class="panel-title">GOVERNANCE RULES</div>
-                <div class="panel-header-actions">
-                  <button
-                    id="goal-reset-button"
-                    class="icon-button"
-                    type="button"
-                    title="Clear"
-                  >
-                    <img
-                      src="/assets/clear-icon.png"
-                      alt="Clear rules"
-                      class="icon-image"
-                    />
-                  </button>
-                  <button
-                    id="goal-submit-button"
-                    class="icon-button"
-                    type="button"
-                    title="Submit governance rules"
-                  >
-                    <img
-                      src="/assets/send-icon.png"
-                      alt="Submit rules"
-                      class="icon-image"
-                    />
-                  </button>
-                </div>
-              </div>
+        </section>
 
-              <div class="panel-body">
-                <textarea
-                  id="goal-input"
-                  class="goal-input"
-                  placeholder="Example:
-- Must avoid words X, Y, Z
-- Under 140 words
-- Ask for 3–4 artifacts, no speculation on model internals…"
-                ></textarea>
+        <!-- RIGHT COLUMN -->
+        <section class="right-column">
+          <div class="right-grid">
+            <div class="panel analytical-panel log-panel">
+              <div class="panel-header">
+                <div class="panel-title">ANALYTICAL HEMISPHERE</div>
               </div>
+              <div class="panel-body log-body" id="analytical-log"></div>
             </div>
 
-            <!-- Parsed Governance Rules -->
+            <div class="panel moderator-panel log-panel">
+              <div class="panel-header">
+                <div class="panel-title">MODERATOR</div>
+              </div>
+              <div class="panel-body log-body" id="moderator-log"></div>
+            </div>
+
+            <div class="panel creative-panel log-panel">
+              <div class="panel-header">
+                <div class="panel-title">CREATIVE HEMISPHERE</div>
+              </div>
+              <div class="panel-body log-body" id="creative-log"></div>
+            </div>
+
             <div class="panel parsed-rules-panel">
               <div class="panel-header">
                 <div class="panel-title">PARSED GOVERNANCE RULES</div>
@@ -204,111 +197,44 @@
                 <div id="rules-summary" class="rules-summary"></div>
               </div>
             </div>
-          </div>
-        </section>
 
-        <!-- ================= RIGHT COLUMN (50%) ================== -->
-        <section class="right-column">
-          <!-- Top half: three log panels side by side -->
-          <div class="right-top-row">
-            <!-- Analytical Hemisphere -->
-            <div class="panel log-panel analytical-panel">
+            <div class="panel ledger-panel">
               <div class="panel-header">
-                <div class="panel-title">ANALYTICAL HEMISPHERE</div>
-                <button
-                  class="chevron-btn"
-                  type="button"
-                  title="Collapse / expand"
-                >
-                  ▾
-                </button>
+                <div class="panel-title">IMMUTABLE GOVERNANCE LEDGER</div>
+                <div class="panel-header-actions">
+                  <button id="download-ledger-btn" class="icon-button" type="button" title="Download ledger JSON">
+                    <svg class="icon-image" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="none"
+                        stroke="white"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div class="panel-body log-body">
-                <div id="analytical-log" class="log-scroll"></div>
-              </div>
-            </div>
-
-            <!-- Moderator & Meta-Governance -->
-            <div class="panel log-panel moderator-panel">
-              <div class="panel-header">
-                <div class="panel-title">MODERATOR</div>
-                <button
-                  class="chevron-btn"
-                  type="button"
-                  title="Collapse / expand"
-                >
-                  ▾
-                </button>
-              </div>
-              <div class="panel-body log-body">
-                <div id="moderator-log" class="log-scroll"></div>
-              </div>
-            </div>
-
-            <!-- Creative Hemisphere -->
-            <div class="panel log-panel creative-panel">
-              <div class="panel-header">
-                <div class="panel-title">CREATIVE HEMISPHERE</div>
-                <button
-                  class="chevron-btn"
-                  type="button"
-                  title="Collapse / expand"
-                >
-                  ▾
-                </button>
-              </div>
-              <div class="panel-body log-body">
-                <div id="creative-log" class="log-scroll"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom half: Immutable Governance Ledger -->
-          <div class="panel log-panel ledger-panel" id="ledger-panel">
-            <div class="panel-header">
-              <div class="panel-title">IMMUTABLE GOVERNANCE LEDGER</div>
-              <div class="panel-header-actions">
-                <button
-                  id="download-ledger-btn"
-                  class="secondary-btn small-btn"
-                  type="button"
-                >
-                  Download JSON
-                </button>
-                <button
-                  class="chevron-btn"
-                  type="button"
-                  title="Collapse / expand"
-                >
-                  ▾
-                </button>
-              </div>
-            </div>
-            <div class="panel-body log-body">
-              <div id="ledger-log" class="log-scroll"></div>
+              <div class="panel-body log-body" id="ledger-log"></div>
             </div>
           </div>
         </section>
       </main>
 
-      <!-- ========================================================= -->
       <!-- FOOTER -->
-      <!-- ========================================================= -->
       <footer class="app-footer">
-        <img
-          src="/assets/logo-login.png"
-          alt="cd\\ai footer logo"
-          class="footer-logo"
-        />
-        <span class="footer-text">
-          Copyright 2025 | Change Directories, LLC – Patent Pending
-          Confidential MVP Demo
-        </span>
+        <img src="/assets/logo-app.png" alt="cd\\ai logo" class="footer-logo" />
+        <div class="footer-text">
+          Copyright 2025 | Change Directories, LLC — Patent Pending Confidential MVP Demo
+        </div>
+        <div class="footer-text" style="opacity:0.7;">
+          Governance rules now managed via conversation.
+        </div>
       </footer>
     </div>
 
-    <!-- Socket.IO and App JS -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/app.js" defer></script>
+    <script src="/app.js"></script>
   </body>
 </html>

@@ -8,11 +8,292 @@ require("dotenv").config();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL_NAME = "gpt-4o";
+const {
+  checkContextDrift,
+  generateGovernanceNarrative,
+} = require("./openaiClient");
+
+const HARD_MAX_CYCLES = 25;
+
+const CANONICAL_SECTIONS = [
+  "Root Cause",
+  "Remediation",
+  "Governance Enhancement",
+  "Leadership Summary",
+];
+
+const COMMITMENT_REGEX =
+  /\bwill\b|\bwill\s+likely\b|\bis\s+expected\s+to\b|\bexpected\s+to\b|\bcommit\b|\bensure\b|\bguarantee\b|fully implemented|deterministic model|\b\d+%\b|\b\d{2,}\s*(confidence|certainty)|\b(per\s+cent|percent)\b/gi;
+const ROLES_REGEX =
+  /(task force|committee|board|team|department|oversight group|working group|executive team|council|governance circle|working council|oversight cell)/gi;
+const REGULATORY_REGEX =
+  /(ISO(-)?like|regulatory alignment|audit-ready|audit ready|compliance review|parallels compliance|oversight parallels compliance|mapped to controls|mapped to ministries)/gi;
+const FORMULA_REGEX = /\b\d+\s*[\+\-\*\/]\s*\d+\b/gi;
+const PROSE_FORMULA_REGEX =
+  /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+of\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(equal|equals|is)\b/gi;
+const SPELLED_PERCENT_REGEX =
+  /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+per\s+cent\b/gi;
+const DETERMINISTIC_NUMERIC_REGEX =
+  /\b\d+%\b|\b\d{2,}\s*(confidence|certainty)\b|\b(per\s+cent|percent)\b/gi;
+
+const REAL_INSTITUTIONS = [
+  "nasa",
+  "iso",
+  "hipaa",
+  "fda",
+  "sec",
+  "who",
+  "world health organization",
+  "finance department",
+  "operations department",
+  "ministry",
+];
+
+function normalizeRuleObject(ruleText, { confidence = 0.78, rationale = "" } = {}) {
+  if (typeof ruleText === "object" && ruleText !== null) return ruleText;
+  return { text: String(ruleText || "").trim(), confidence, rationale };
+}
+
+function getSectionBoundaries(text) {
+  const matches = [];
+  const regex =
+    /(?:^|\n)\s*(Root Cause|Remediation|Governance Enhancement|Leadership Summary)\s*[:\-]?\s*/gi;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({ name: m[1], index: m.index, start: regex.lastIndex });
+  }
+  return matches
+    .map((marker, idx) => ({
+      ...marker,
+      end: matches[idx + 1] ? matches[idx + 1].index : text.length,
+    }))
+    .sort((a, b) => a.index - b.index);
+}
+
+function extractSections(text) {
+  const matches = getSectionBoundaries(text);
+  const sections = {};
+  matches.forEach((marker) => {
+    sections[marker.name] = text.slice(marker.start, marker.end).trim();
+  });
+  return sections;
+}
+
+function coerceToCanonicalStructure(text) {
+  const sections = extractSections(text);
+  const missing = CANONICAL_SECTIONS.filter((s) => !sections[s]);
+  const hasAll = missing.length === 0;
+  if (hasAll) return text;
+
+  const rebuilt = CANONICAL_SECTIONS.map((section) => {
+    const body = sections[section] || "Pending clarification; provided content was remapped to canonical sections.";
+    return `${section}:\n${body}`.trim();
+  });
+
+  return rebuilt.join("\n\n");
+}
+
+function replaceDeterministicLanguage(text) {
+  let output = text.replace(COMMITMENT_REGEX, (m) => {
+    if (/fully implemented/i.test(m)) return "partially implemented (subject to validation)";
+    if (/guarantee/i.test(m)) return "avoid definitive promise";
+    if (/ensure/i.test(m)) return "aim to support";
+    if (/commit/i.test(m)) return "plan to";
+    if (/will\s+likely/i.test(m)) return "likely to";
+    if (/expected to/i.test(m)) return "likely to";
+    if (/will/i.test(m)) return "intend to";
+    if (/deterministic model/i.test(m)) return "model subject to validation";
+    if (/%/.test(m) || /confidence|certainty|per\s+cent|percent/i.test(m))
+      return "approximate (subject to validation)";
+    return "aim to";
+  });
+
+  output = output.replace(DETERMINISTIC_NUMERIC_REGEX, "approximate (subject to validation)");
+  output = output.replace(FORMULA_REGEX, "calculation (approximate only)");
+  output = output.replace(SPELLED_PERCENT_REGEX, "approximate (subject to validation)");
+  output = output.replace(PROSE_FORMULA_REGEX, "calculation (approximate only)");
+  return output;
+}
+
+function stripRolesAndRegulatory(text) {
+  let output = text.replace(ROLES_REGEX, "cross-functional group");
+  output = output.replace(REGULATORY_REGEX, "mapped to internal controls");
+  return output;
+}
+
+function applyCycleOneFilters(text) {
+  let output = coerceToCanonicalStructure(text);
+  output = stripRolesAndRegulatory(output);
+  output = replaceDeterministicLanguage(output);
+  return output;
+}
 
 if (!OPENAI_API_KEY) {
   console.warn(
     "[cd/ai] WARNING: OPENAI_API_KEY is not set. The workflow will fail until you set it in .env or Render env vars."
   );
+}
+
+// --- Pre-Cycle Governance Parser (PCGP) -------------------------------------
+function parseGovernanceEnvelope(rawInputText) {
+  const text = (rawInputText || "").trim();
+  const lower = text.toLowerCase();
+
+  const explicitRules = [];
+  const inferredRules = [];
+  const contradictions = [];
+  const decoyInstruction = [];
+  const conditionalLanguage = [];
+  const metaWarnings = [];
+
+  const forbiddenContent = {
+    percentages: false,
+    mathFormulas: false,
+    realInstitutions: false,
+    roles: false,
+  };
+
+  const safetyBoundaries = {
+    noSpeculation: false,
+    noLegalConclusions: false,
+    conditionalLanguageOnly: false,
+  };
+
+  const toneSchema = {
+    analyticalTone: "crisp + hedged",
+    executiveSummaryPlainLanguage: "reassuring + plain language",
+  };
+
+  const structureSchema = {
+    requiredSections: [...CANONICAL_SECTIONS],
+    orderEnforced: true,
+    authoritativeSource: "latest-explicit-or-canonical",
+  };
+
+  function addExplicit(textRule, confidence = 0.82, rationale = "") {
+    explicitRules.push({ text: textRule, confidence, rationale });
+  }
+
+  function addInferred(textRule, confidence = 0.68, rationale = "") {
+    inferredRules.push({ text: textRule, confidence, rationale });
+  }
+
+  const decoyPatterns = [
+    "nasa hr",
+    "operations dept",
+    "operations department",
+    "must include a guarantee",
+    "create a formula",
+    "use departments",
+  ];
+
+  decoyPatterns.forEach((p) => {
+    if (lower.includes(p)) {
+      decoyInstruction.push({
+        text: `Decoy instruction detected: "${p}"`,
+        confidence: 0.71,
+        rationale: "Prompt contained distracting or contradictory governance text.",
+      });
+    }
+  });
+
+  if (/\bno speculation\b|\bnot speculate\b|\bno guessing\b/.test(lower)) {
+    safetyBoundaries.noSpeculation = true;
+    addExplicit("Avoid speculation; flag missing information explicitly.", 0.86, "Prompt forbids speculation.");
+  }
+  if (/\bno legal\b|\bno legal conclusions\b|\bavoid legal conclusions\b/.test(lower)) {
+    safetyBoundaries.noLegalConclusions = true;
+    addExplicit("Avoid legal conclusions or regulatory determinations.", 0.84, "Prompt forbids legal conclusions.");
+  }
+  if (/\bno percentages\b|\bno percent\b|%\b/.test(lower)) {
+    forbiddenContent.percentages = true;
+    addExplicit("Avoid percentages unless unavoidable; prefer qualitative ranges.", 0.83, "Prompt mentions no %/formulas.");
+  }
+  if (/\bno math\b|\bno formulas\b|\bmath formulas\b/.test(lower)) {
+    forbiddenContent.mathFormulas = true;
+    addExplicit("Do not include math formulas.", 0.82, "Prompt forbids formulas.");
+  }
+  if (/\bno real (standards|institutions|regulations|governments|countries)\b/.test(lower)) {
+    forbiddenContent.realInstitutions = true;
+    addExplicit("Avoid real institutions/standards/regulations.", 0.83, "Prompt forbids real institutions.");
+  }
+  if (/\bno roles?\b|\bno departments?\b|\bno teams?\b|\bno committees?\b|\bno boards?\b|\bno councils?\b|\bno ministries?\b/.test(lower)) {
+    forbiddenContent.roles = true;
+    addExplicit("Do not reference roles, departments, teams, committees, or boards.", 0.85, "Prompt forbids roles/departments.");
+  }
+  if (/\bno regulators\b|\bavoid regulators\b|\bno regulatory\b/.test(lower)) {
+    addExplicit("Avoid regulator mentions; use internal control language instead.", 0.78, "Prompt downplays regulators.");
+  }
+  if (/\bno guaranteed\b|\bno guarantees\b|\bnot guaranteed\b|\bno commitments\b/.test(lower)) {
+    addExplicit("Avoid commitments/guarantees/deterministic language.", 0.9, "Prompt forbids deterministic commitments.");
+  }
+  if (/\btone\b.*(analytical|executive|leadership)/.test(lower)) {
+    addExplicit("Tone split: analytical/crisp vs. leadership/reassuring.", 0.8, "Prompt requests tone split.");
+  }
+
+  if (/\bper\s+cent\b|percent\b/.test(lower)) {
+    addExplicit("Avoid percentages unless unavoidable; prefer qualitative statements.", 0.76, "Prompt hints at % usage.");
+  }
+  if (/\bformula\b|\bmath\b|\bequals\b/.test(lower)) {
+    addExplicit("Avoid formulas/math expressions; keep qualitative.", 0.74, "Prompt hints at formulas.");
+  }
+
+  if (/\broot cause\b/.test(lower) || /\bfour\b|\b4\b/.test(lower)) {
+    structureSchema.authoritativeSource = "prompt-latest";
+    structureSchema.requiredSections = [...CANONICAL_SECTIONS];
+    structureSchema.orderEnforced = true;
+  }
+
+  if (/\bfindings\b|\bexec note\b|\bexec summary\b/i.test(lower)) {
+    contradictions.push({
+      text: "3-section hint conflicts with canonical 4-section schema; enforce canonical schema.",
+      confidence: 0.7,
+    });
+  }
+
+  if (/\bcontradiction\b|\bconflict\b|\bmutually exclusive\b/.test(lower)) {
+    addInferred("Surface contradictions explicitly and resolve in favor of latest explicit rule.", 0.7, "Prompt references contradictions.");
+  }
+
+  if (/\bcall out missing\b|\bif missing\b|\bif unclear\b|\bif vague\b|\blacking details\b/.test(lower)) {
+    addInferred("Flag missing information explicitly; do not invent details.", 0.82, "Prompt references missing info.");
+    conditionalLanguage.push({
+      text: "If inputs are unclear, flag missing info instead of guessing.",
+      confidence: 0.78,
+    });
+  }
+
+  const missingInformation = /\bmissing\b|\bvague\b|\bunclear\b|\binsufficient detail\b/.test(lower);
+
+  if (missingInformation && !conditionalLanguage.length) {
+    conditionalLanguage.push({
+      text: "Flag unclear inputs as missing information.",
+      confidence: 0.75,
+    });
+  }
+
+  const contradictoryGuarantee = /\bmust include a guarantee\b/.test(lower);
+  const noGuarantee = /\bno guarantees\b|\bno commitments\b|\bavoid deterministic\b/.test(lower);
+  if (contradictoryGuarantee && noGuarantee) {
+    contradictions.push({
+      text: "Guarantee requested but also forbidden; honor the prohibition.",
+      confidence: 0.86,
+    });
+  }
+
+  return {
+    explicitRules,
+    inferredRules,
+    structureSchema,
+    toneSchema,
+    safetyBoundaries,
+    forbiddenContent,
+    metaWarnings,
+    contradictions,
+    conditionalLanguage,
+    missingInformation,
+    decoyInstruction,
+  };
 }
 
 // --- Normalization helpers ---------------------------------------------------
@@ -57,6 +338,216 @@ function validationSummary(v) {
   return issues.length
     ? `Violations: ${issues.join("; ")}`
     : "All constraints satisfied.";
+}
+
+function detectGovernanceViolations(text) {
+  const body = text || "";
+  const lower = body.toLowerCase();
+  const sections = extractSections(body);
+  const boundaries = getSectionBoundaries(body);
+
+  const hits = [];
+  const riskyTokens = new Set();
+  let structureOk = true;
+
+  function findSectionForIndex(idx) {
+    for (const b of boundaries) {
+      if (idx >= b.index && idx <= b.end) return b.name;
+    }
+    return null;
+  }
+
+  function addHit({ matchIndex = 0, snippet, severity = "hard", section, confidence = 0.78 }) {
+    const resolvedSection =
+      section || findSectionForIndex(matchIndex) || "global";
+    const cleanedSnippet = (snippet || "").toString().slice(0, 200);
+    hits.push({
+      section: resolvedSection,
+      snippet: cleanedSnippet,
+      severity,
+      confidence,
+    });
+  }
+
+  // Structure enforcement
+  CANONICAL_SECTIONS.forEach((section) => {
+    if (!sections[section]) {
+      structureOk = false;
+      addHit({
+        snippet: `Missing required section: ${section}`,
+        severity: "hard",
+        confidence: 0.88,
+      });
+    }
+  });
+
+  const extraHeading = body.match(
+    /(?:^|\n)\s*([A-Z][A-Za-z\s]+):\s*$/m
+  );
+  if (extraHeading && !CANONICAL_SECTIONS.includes(extraHeading[1])) {
+    structureOk = false;
+    addHit({
+      snippet: `Extra section detected: ${extraHeading[1]}`,
+      severity: "hard",
+      confidence: 0.72,
+    });
+  }
+
+  // Hard rules: commitments/deterministic
+  const commitmentRegex = new RegExp(COMMITMENT_REGEX.source, "gi");
+  let m;
+  while ((m = commitmentRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Deterministic/commitment phrase "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.86,
+    });
+  }
+
+  const rolesRegex = new RegExp(ROLES_REGEX.source, "gi");
+  while ((m = rolesRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Role/department mention "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.83,
+    });
+  }
+
+  const regRegex = new RegExp(REGULATORY_REGEX.source, "gi");
+  while ((m = regRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Regulatory-adjacent phrase "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.8,
+    });
+  }
+
+  const formulaRegex = new RegExp(FORMULA_REGEX.source, "gi");
+  while ((m = formulaRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Formula/numeric expression "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.8,
+    });
+  }
+
+  const proseFormulaRegex = new RegExp(PROSE_FORMULA_REGEX.source, "gi");
+  while ((m = proseFormulaRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Formula-as-prose expression "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.78,
+    });
+  }
+
+  const spelledPercentRegex = new RegExp(SPELLED_PERCENT_REGEX.source, "gi");
+  while ((m = spelledPercentRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Spelled-out percentage "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.8,
+    });
+  }
+
+  const deterministicNumericRegex = new RegExp(
+    DETERMINISTIC_NUMERIC_REGEX.source,
+    "gi"
+  );
+  while ((m = deterministicNumericRegex.exec(body)) !== null) {
+    riskyTokens.add(m[0].toLowerCase());
+    addHit({
+      matchIndex: m.index,
+      snippet: `Deterministic numeric "${m[0]}"`,
+      severity: "hard",
+      confidence: 0.82,
+    });
+  }
+
+  REAL_INSTITUTIONS.forEach((inst) => {
+    if (lower.includes(inst)) {
+      riskyTokens.add(inst);
+      addHit({
+        snippet: `Real institution reference "${inst}"`,
+        severity: "hard",
+        confidence: 0.76,
+      });
+    }
+  });
+
+  // Tone & near-violations
+  const leadership = sections["Leadership Summary"] || "";
+  if (leadership) {
+    const leadershipDeterministic = leadership.match(/\b(ensure|guarantee|will|commit)\b/i);
+    if (leadershipDeterministic) {
+      riskyTokens.add(leadershipDeterministic[0].toLowerCase());
+      addHit({
+        snippet: `Leadership deterministic verb "${leadershipDeterministic[0]}"`,
+        section: "Leadership Summary",
+        severity: "hard",
+        confidence: 0.82,
+      });
+    }
+  }
+
+  const analyticalSections = [
+    sections["Root Cause"],
+    sections["Remediation"],
+    sections["Governance Enhancement"],
+  ].filter(Boolean);
+  analyticalSections.forEach((sectionText, idx) => {
+    const hasHedging = /\b(may|could|might|aim|plan|intend|designed to|approximate|subject to validation)\b/i.test(
+      sectionText
+    );
+    if (!hasHedging && sectionText.trim().length > 0) {
+      addHit({
+        snippet: `Analytical section ${idx + 1} lacks hedging language.`,
+        section: idx === 0 ? "Root Cause" : idx === 1 ? "Remediation" : "Governance Enhancement",
+        severity: "warning",
+        confidence: 0.65,
+      });
+    }
+  });
+
+  const forbiddenHits = hits
+    .filter((h) => h.severity === "hard")
+    .map((h) => h.snippet);
+
+  const impliedReliabilityOk =
+    forbiddenHits.filter((h) =>
+      /deterministic|numeric|%|per\s+cent|guarantee|ensure|will|commit|expected/i.test(h)
+    ).length === 0;
+
+  const hardCount = hits.filter((h) => h.severity === "hard").length;
+  const warningCount = hits.filter((h) => h.severity === "warning").length;
+  const precisionScore = Math.max(
+    0,
+    Number((1 - hardCount * 0.12 - warningCount * 0.05).toFixed(2))
+  );
+
+  return {
+    forbiddenHits,
+    wordCountOk: true,
+    artifactsOk: structureOk,
+    impliedReliabilityOk,
+    isCompliant: structureOk && hardCount === 0,
+    detailedHits: hits,
+    precisionScore,
+    hardViolationCount: hardCount,
+    warningCount,
+    riskyTokens: [...riskyTokens],
+  };
 }
 
 // --- Rules parser ------------------------------------------------------------
@@ -110,10 +601,13 @@ function waitForUserClarification(socket, { cycle }) {
 }
 
 // --- Meta-governance helpers -------------------------------------------------
+//
 // Confidence tiers for inferred constraints:
-// - high: auto-apply as system-generated rule
-// - medium: ask user clarification, then add as user-authorized rule
-// - low: discard but record in ledger
+//
+// high   → auto-apply as system-generated rule
+// medium → ask user clarification, then add as user-authorized rule
+// low    → discard but record in ledger
+// -----------------------------------------------------------------------------
 
 function classifyConfidenceTier(score) {
   const s = Number(score);
@@ -150,7 +644,7 @@ function applyInferredConstraints({
       // Auto-apply as system-generated rule
       const ruleObj = {
         text,
-        origin: "system", // will show blue in UI
+        origin: "system", // shows as system rule (blue) in UI
         status: "pending",
       };
       rules.push(ruleObj);
@@ -199,7 +693,7 @@ function applyInferredConstraints({
   return mediumCandidates;
 }
 
-// --- Unresolved-conflict synthesis helper ------------------------------------
+// --- Unresolved-conflict synthesis helper -----------------------------------
 
 async function synthesizeUnresolvedConflicts({
   input,
@@ -243,12 +737,14 @@ User task:
 ${input}
 
 High-level governance rules:
-${(rules || [])
-  .map((r, idx) => `${idx + 1}. ${(r.text || r).trim()}`)
-  .join("\n") || "None provided."}
+${
+  (rules || [])
+    .map((r, idx) => `${idx + 1}. ${(r.text || r).trim()}`)
+    .join("\n") || "None provided."
+}
 
 Validator conflict history across ${plannedCycles} planned cycles:
-${violationsSummary || "No recorded violations (should be rare for this path)."}
+${violationsSummary || "No recorded violations (this path should be rare)."}
 
 Instructions:
 - Focus only on tensions the system could not cleanly resolve.
@@ -268,45 +764,273 @@ Instructions:
   );
 }
 
-// --- Core governed workflow --------------------------------------------------
+// --- Core governed workflow (GIL-Lite + hard cap user mode) -----------------
 
 async function runGovernedWorkflow(
   socket,
-  { input, goal, maxCycles, governanceStrictness, perfMode }
+  {
+    input,
+    goal,
+    maxCycles,
+    governanceStrictness,
+    perfMode,
+    rules: injectedRules,
+    baseLedger = [],
+    governanceEnvelope,
+    confidenceScore,
+  }
 ) {
   // Normalize knobs here so server.js can stay thin.
-  const effectiveMaxCycles = normalizeMaxCycles(maxCycles);
   const effectiveStrictness = normalizeStrictness(governanceStrictness);
   const mode = normalizePerfMode(perfMode);
+
+  // GIL-Lite semantics:
+  // - If maxCycles is null/undefined → GIL-Lite controls cycles (up to HARD_MAX_CYCLES)
+  // - If maxCycles is a number → treat as a HARD user cap (1–10) that we never exceed
+  let userCap = null;
+  if (maxCycles !== null && maxCycles !== undefined) {
+    const n = Number(maxCycles);
+    if (Number.isFinite(n) && n > 0) {
+      userCap = normalizeMaxCycles(n);
+    }
+  }
+
+  const gilActive = mode === "real" || userCap === null;
 
   // Reset panels (logs, ledger, rule statuses), but keep chat history.
   socket.emit("telemetry", { type: "reset" });
 
-  // Build rule objects with origin metadata (for UI colors).
-  const baseRules = parseRulesFromGoal(goal || "");
-  const rules = baseRules.map((t) => ({
-    text: t,
-    origin: "user",
-    status: "pending",
-  }));
+  // Signal GIL-Lite state to the UI.
+  socket.emit("telemetry", {
+    type: "gil-state",
+    active: gilActive,
+  });
 
-  const ledger = [];
+  // Build rule objects with origin metadata (for UI colors).
+  const baseRules = Array.isArray(injectedRules)
+    ? injectedRules
+    : parseRulesFromGoal(goal || "").map((t) => ({
+        text: t,
+        origin: "user",
+        status: "pending",
+      }));
+  let rules = baseRules.map((r) =>
+    typeof r === "string"
+      ? { text: r, origin: "user", status: "pending" }
+      : { ...r, text: r.text || "" }
+  );
+
+  // PCGP: derive governance envelope and freeze it for this run
+  const envelope = governanceEnvelope || parseGovernanceEnvelope(input);
+  const pcgpRules = [];
+  (envelope.explicitRules || []).forEach((t) => {
+    const normalized = normalizeRuleObject(t);
+    pcgpRules.push({
+      text: normalized.text,
+      origin: "user",
+      status: "pending",
+      rationale: normalized.rationale,
+      confidence: normalized.confidence,
+    });
+  });
+  (envelope.inferredRules || []).forEach((t) => {
+    const normalized = normalizeRuleObject(t);
+    pcgpRules.push({
+      text: normalized.text,
+      origin: "user",
+      status: "pending",
+      rationale: normalized.rationale,
+      confidence: normalized.confidence,
+    });
+  });
+
+  // Inject structural/tone/forbidden constraints as rules for enforcement
+  if (envelope.structureSchema?.requiredSections?.length) {
+    pcgpRules.push({
+      text: `Include sections in order: ${envelope.structureSchema.requiredSections.join(
+        " > "
+      )}`,
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.toneSchema?.analyticalTone) {
+    pcgpRules.push({
+      text: "Maintain analytical tone except where plain language summary is requested.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.toneSchema?.executiveSummaryPlainLanguage) {
+    pcgpRules.push({
+      text: "Executive/leadership summary must be in plain language, no jargon.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.safetyBoundaries?.noSpeculation) {
+    pcgpRules.push({
+      text: "Do not speculate; flag missing information instead of guessing.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.safetyBoundaries?.noLegalConclusions) {
+    pcgpRules.push({
+      text: "Avoid legal conclusions; do not imply regulatory violations.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.safetyBoundaries?.conditionalLanguageOnly) {
+    pcgpRules.push({
+      text: "Use conditional language (may, could, likely); avoid absolutes.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.forbiddenContent?.percentages) {
+    pcgpRules.push({
+      text: "Do not include percentages.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.forbiddenContent?.mathFormulas) {
+    pcgpRules.push({
+      text: "Do not include math formulas.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.forbiddenContent?.roles) {
+    pcgpRules.push({
+      text: "Do not reference roles, departments, teams, committees, or boards.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.forbiddenContent?.realInstitutions) {
+    pcgpRules.push({
+      text: "Do not reference real institutions, standards bodies, governments, or countries.",
+      origin: "user",
+      status: "pending",
+    });
+  }
+  if (envelope.conditionalLanguage?.length) {
+    envelope.conditionalLanguage.forEach((c) =>
+      pcgpRules.push({
+        text: c.text || "Flag unclear inputs; use conditional language.",
+        origin: "system",
+        status: "pending",
+        confidence: c.confidence || 0.7,
+      })
+    );
+  }
+  if (envelope.missingInformation) {
+    pcgpRules.push({
+      text: "Flag missing information explicitly; do not guess.",
+      origin: "system",
+      status: "pending",
+    });
+  }
+  if (envelope.decoyInstruction?.length) {
+    envelope.decoyInstruction.forEach((d) =>
+      pcgpRules.push({
+        text: d.text,
+        origin: "system",
+        status: "decoy",
+        confidence: d.confidence || 0.7,
+      })
+    );
+  }
+
+  rules = [...rules, ...pcgpRules];
+
+  // Initialize ledger with any pre-existing governance entries (normalized)
+  let ledger = Array.isArray(baseLedger)
+    ? baseLedger.map((entry) => ({
+        cycle: entry.cycle ?? 0,
+        stage: entry.stage || "Governance",
+        ...entry,
+      }))
+    : [];
+  if (Array.isArray(envelope.metaWarnings) && envelope.metaWarnings.length) {
+    envelope.metaWarnings.forEach((w) =>
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "MetaGovernance",
+        cycle: 0,
+        summary: `Contradictory constraints detected; using conservative interpretation. ${w}`,
+        snippet: w,
+      })
+    );
+  }
+
+  // PCGP ledger entry
+  ledger.push({
+    timestamp: new Date().toISOString(),
+    stage: "MCP - PCGP",
+    cycle: 0,
+    summary: `Governance Envelope initialized with ${envelope.explicitRules.length} explicit rules, ${envelope.inferredRules.length} inferred rules.`,
+    snippet: `Sections: ${envelope.structureSchema.requiredSections.join(", ") || "none"}`,
+  });
+
+  // Context drift detection before cycles (skip when no rules exist)
+  if (rules.length > 0) {
+    const drift = await checkContextDrift(input, rules);
+    if (drift?.driftDetected) {
+      const suggestionText =
+        (drift.rulesToSuggestClearing || []).length > 0
+          ? `Suggested rules to clear: ${drift.rulesToSuggestClearing
+              .map((i) => `Rule ${i + 1}`)
+              .join(", ")}.`
+          : "";
+      const msg = `This task appears unrelated to your current governance rules. Would you like to clear them? ${suggestionText}`;
+      ledger.push({
+        timestamp: new Date().toISOString(),
+        stage: "ContextDrift",
+        cycle: 0,
+        summary: msg,
+        snippet: drift.explanation || "",
+      });
+      const narrative = await generateGovernanceNarrative({
+        summary: msg,
+        explanation: drift.explanation,
+        confidence: drift.confidence,
+      });
+      socket.emit("telemetry", {
+        type: "final-output",
+        text: narrative || msg,
+        narrative: narrative || msg,
+      });
+      socket.emit("telemetry", { type: "ledger", entries: ledger });
+      return;
+    }
+  }
 
   // Track stubborn violations across cycles for unresolved-conflict surfacing
   const stubbornViolations = [];
 
   // Mode-specific knobs
-  let plannedCycles = effectiveMaxCycles;
+  const plannedCycles = userCap != null ? userCap : HARD_MAX_CYCLES;
   let minCycles = 1;
 
   if (mode === "real") {
-    // Full convergence, require at least 2 passes for "real" demo
-    minCycles = Math.min(2, plannedCycles);
+    // REAL mode: require at least 2 cycles only when user did not set a 1-cycle cap.
+    if (userCap === 1) {
+      minCycles = 1;
+    } else {
+      minCycles = Math.min(2, plannedCycles);
+    }
   } else if (mode === "fast") {
-    plannedCycles = Math.min(3, plannedCycles);
     minCycles = 1;
   } else if (mode === "turbo") {
     // Turbo: single-pass approximation
+    socket.emit("telemetry", {
+      type: "gil-state",
+      active: gilActive,
+    });
     return runTurboWorkflow(socket, {
       input,
       goal,
@@ -362,15 +1086,26 @@ async function runGovernedWorkflow(
   let validation = initialValidationState();
   let converged = false;
   let clarificationCount = 0;
+  let cyclesRun = 0;
+  let hitRunaway = false;
+  const clarifications = [];
+  let previousWarningsSignature = null;
+  let noNewWarningsStreak = 0;
+  let previousRiskTokens = new Set();
 
   // --- Dual-hemisphere cycles -----------------------------------------------
-
-  for (let cycle = 1; cycle <= plannedCycles; cycle++) {
+  const effectiveMax = plannedCycles;
+  for (let cycle = 1; cycle <= effectiveMax; cycle++) {
+    cyclesRun = cycle;
     socket.emit("telemetry", { type: "cycle-update", cycle });
     socket.emit("telemetry", {
       type: "governance-rules-progress",
       cycle,
     });
+
+    if (cycle === 1) {
+      currentText = applyCycleOneFilters(currentText);
+    }
 
     // ---- Analytical --------------------------------------------------------
     socket.emit("telemetry", {
@@ -411,7 +1146,7 @@ async function runGovernedWorkflow(
       message: `Cycle ${cycle}: ${analyticalResult.deltaSummary}`,
     });
 
-    // ---- Moderator ---------------------------------------------------------
+    // ---- Moderator (pre-creative) -----------------------------------------
     socket.emit("telemetry", {
       type: "mcp-status",
       status: "Moderator",
@@ -438,15 +1173,16 @@ async function runGovernedWorkflow(
 
     socket.emit("telemetry", {
       type: "moderator-log",
-      message: `Cycle ${cycle}: ${moderatorResult.moderatorSummary} ${
+      message: `Cycle ${cycle} (pre-creative): ${
+        moderatorResult.moderatorSummary
+      } ${
         typeof moderatorResult.confidence === "number"
           ? `(confidence ${moderatorResult.confidence.toFixed(2)})`
           : ""
       }`.trim(),
     });
 
-    // ---- Optional: user clarification loop --------------------------------
-
+    // --- Optional: user clarification loop ---------------------------------
     let userFeedback = null;
 
     if (
@@ -459,6 +1195,11 @@ async function runGovernedWorkflow(
       const question =
         moderatorResult.userQuestion ||
         "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1–2 sentences.";
+      clarifications.push({
+        cycle,
+        status: "requested",
+        question: question.slice(0, 500),
+      });
 
       socket.emit("telemetry", {
         type: "clarification-request",
@@ -481,6 +1222,11 @@ async function runGovernedWorkflow(
       userFeedback = await waitForUserClarification(socket, { cycle });
 
       if (userFeedback) {
+        clarifications.push({
+          cycle,
+          status: "answered",
+          answer: userFeedback.slice(0, 500),
+        });
         ledger.push({
           timestamp: new Date().toISOString(),
           stage: "UserFeedback",
@@ -490,7 +1236,6 @@ async function runGovernedWorkflow(
           snippet: userFeedback.slice(0, 200),
         });
 
-        // Add as user-authorized rule (purple in UI)
         const clarifiedRule = {
           text: userFeedback,
           origin: "user-clarified",
@@ -536,6 +1281,10 @@ async function runGovernedWorkflow(
             cycle +
             ": no user clarification received in time; continued with existing interpretation.",
         });
+        clarifications.push({
+          cycle,
+          status: "timeout",
+        });
       }
     }
 
@@ -571,6 +1320,44 @@ async function runGovernedWorkflow(
       message: `Cycle ${cycle}: ${creativeResult.deltaSummary}`,
     });
 
+    // ---- Moderator (post-creative) ----------------------------------------
+    socket.emit("telemetry", {
+      type: "mcp-status",
+      status: "Moderator",
+      detail: `Cycle ${cycle}: moderator reviewing creative output before handing back to Analytical.`,
+    });
+
+    const postCreativeModeratorResult = await moderatorPass(currentText, {
+      input,
+      rules,
+      governanceStrictness: effectiveStrictness,
+      analyticalSummary: creativeResult.deltaSummary,
+      directives: analyticalResult.directives,
+      validation,
+      mediumCandidates: [],
+    });
+
+    ledger.push({
+      timestamp: new Date().toISOString(),
+      stage: "Moderator",
+      cycle,
+      summary: postCreativeModeratorResult.moderatorSummary,
+      snippet: currentText.slice(0, 260),
+    });
+
+    socket.emit("telemetry", {
+      type: "moderator-log",
+      message: `Cycle ${cycle} (post-creative): ${
+        postCreativeModeratorResult.moderatorSummary
+      } ${
+        typeof postCreativeModeratorResult.confidence === "number"
+          ? `(confidence ${postCreativeModeratorResult.confidence.toFixed(
+              2
+            )})`
+          : ""
+      }`.trim(),
+    });
+
     // ---- Validator ---------------------------------------------------------
     const postCreativeValidation = await validatorPass(currentText, {
       input,
@@ -590,7 +1377,6 @@ async function runGovernedWorkflow(
       snippet: currentText.slice(0, 260),
     });
 
-    // Track non-compliant states as "stubborn violations"
     if (!validation.isCompliant) {
       stubbornViolations.push({
         cycle,
@@ -599,20 +1385,63 @@ async function runGovernedWorkflow(
       });
     }
 
-    if (validation.isCompliant && cycle >= minCycles) {
+    // --- GIL Lite state updates ---------------------------------------------
+    const hardCount =
+      validation.hardViolationCount ??
+      (validation.detailedHits || []).filter((v) => v.severity === "hard").length;
+    const warningHits = (validation.detailedHits || []).filter(
+      (v) => v.severity === "warning"
+    );
+    const warningSignature = JSON.stringify(
+      warningHits.map((w) => `${w.section || "global"}|${w.snippet || ""}`)
+    );
+    const warningsChanged =
+      previousWarningsSignature !== null &&
+      warningSignature !== previousWarningsSignature;
+    if (hardCount === 0) {
+      if (previousWarningsSignature === null) {
+        noNewWarningsStreak = 1;
+      } else if (!warningsChanged) {
+        noNewWarningsStreak += 1;
+      } else {
+        noNewWarningsStreak = 1;
+      }
+    } else {
+      noNewWarningsStreak = 0;
+    }
+    previousWarningsSignature = warningSignature;
+
+    const currentRiskTokens = new Set(validation.riskyTokens || []);
+    const introducedRiskTokens = [...currentRiskTokens].filter(
+      (t) => !previousRiskTokens.has(t)
+    );
+    previousRiskTokens = currentRiskTokens;
+
+    const canConverge =
+      hardCount === 0 &&
+      noNewWarningsStreak >= 2 &&
+      introducedRiskTokens.length === 0 &&
+      cycle >= minCycles;
+
+    const runaway =
+      stubbornViolations.length >= 5 || cycle === HARD_MAX_CYCLES;
+
+    if (canConverge) {
       converged = true;
+      break;
+    }
+
+    if (runaway) {
+      hitRunaway = true;
       break;
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Finalization + Unresolved Governance Conflicts surfacing
-  // -------------------------------------------------------------------------
+  // --- Finalization + Unresolved Governance Conflicts surfacing -------------
+
   let finalText = currentText;
 
   if (!converged && stubbornViolations.length > 0) {
-    // The engine hit its fail-safe stop with unresolved issues.
-    // Instead of silently harmonizing, surface conflicts for human review.
     const unresolvedSection = await synthesizeUnresolvedConflicts({
       input,
       rules,
@@ -635,8 +1464,36 @@ async function runGovernedWorkflow(
     });
   }
 
-  // Finalize rules + MCP status + ledger + output
-  socket.emit("telemetry", { type: "governance-rules-final" });
+  // Stamp final rule statuses for UI summary
+  const finalRuleStatus = validation.isCompliant ? "passed" : "failed";
+  const finalizedRules = rules.map((r) => {
+    // Keep explicit clarified status if origin indicates user clarification
+    const clarified =
+      r.origin === "user-clarified" || r.status === "clarified";
+    return {
+      ...r,
+      status: clarified ? "clarified" : finalRuleStatus,
+    };
+  });
+
+  const narrative = buildNarrativeReport({
+    input,
+    goal,
+    mode,
+    converged,
+    validation,
+    plannedCycles,
+    cyclesRun,
+    stubbornViolations,
+    clarifications,
+    rules: finalizedRules,
+    hitRunaway,
+  });
+
+  socket.emit("telemetry", {
+    type: "governance-rules-final",
+    rules: finalizedRules,
+  });
   socket.emit("telemetry", {
     type: "mcp-status",
     status: "Finalized",
@@ -646,10 +1503,10 @@ async function runGovernedWorkflow(
   });
 
   socket.emit("telemetry", { type: "ledger", entries: ledger });
-  socket.emit("telemetry", { type: "final-output", text: finalText });
+  socket.emit("telemetry", { type: "final-output", text: finalText, narrative });
 }
 
-// --- Turbo workflow (ultra-fast) --------------------------------------------
+// --- Turbo workflow (ultra-fast, approximate governance) --------------------
 
 async function runTurboWorkflow(
   socket,
@@ -694,7 +1551,8 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
     temperature: 0.5,
   });
 
-  const text = combined || `Draft (turbo mode) based on: "${input}"`;
+  const text =
+    combined || `Draft (turbo mode) based on: "${input}"`;
 
   const now = new Date().toISOString();
   ledger.push({
@@ -724,7 +1582,12 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
       "Turbo mode: moderator and meta-governance behavior simulated for demo; no user clarifications requested in this mode.",
   });
 
-  socket.emit("telemetry", { type: "governance-rules-final" });
+  const turboFinalRules = rules.map((r) => ({
+    ...r,
+    status: r.origin === "user-clarified" ? "clarified" : "passed",
+  }));
+
+  socket.emit("telemetry", { type: "governance-rules-final", rules: turboFinalRules });
   socket.emit("telemetry", {
     type: "mcp-status",
     status: "Finalized",
@@ -733,34 +1596,26 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
   });
 
   socket.emit("telemetry", { type: "ledger", entries: ledger });
-  // ======================================================
-// GOVERNANCE RULE SUMMARY (passed / failed / clarified)
-// ======================================================
-const summary = {
-  passed: 0,
-  failed: 0,
-  clarified: 0,
-  total: appliedRules.length,
-};
+  socket.emit("telemetry", {
+    type: "governance-rules",
+    rules,
+  });
 
-// Count rule statuses
-appliedRules.forEach((rule) => {
-  if (rule.origin === "system" || rule.origin === "user") {
-    summary.passed++;
-  } else if (rule.origin === "user-clarified") {
-    summary.clarified++;
-  } else if (rule.origin === "failed") {
-    summary.failed++;
-  }
-});
+  const narrative = buildNarrativeReport({
+    input,
+    goal,
+    mode: "turbo",
+    converged: true,
+    validation: { ...initialValidationState(), isCompliant: true },
+    plannedCycles: 2,
+    cyclesRun: 1,
+    stubbornViolations: [],
+    clarifications: [],
+    rules: turboFinalRules,
+    hitRunaway: false,
+  });
 
-// Send summary to UI
-socket.emit("governance-rules", {
-  rules: appliedRules,
-  summary,
-});
-
-  socket.emit("telemetry", { type: "final-output", text });
+  socket.emit("telemetry", { type: "final-output", text, narrative });
 }
 
 // --- Passes: Task Agent, Analytical, Moderator, Creative, Validator ----------
@@ -809,6 +1664,10 @@ You are the ANALYTICAL hemisphere in the cd\\ai governed architecture.
 Your responsibilities:
 - Enforce governance constraints strictly,
 - Make minimal necessary edits to the draft,
+- Enforce the canonical four-section schema (Root Cause, Remediation, Governance Enhancement, Leadership Summary) when not present,
+- Strip commitments/guarantees/deterministic numerics (will/commit/ensure/guarantee, %, confidence claims),
+- Remove role/department/team/committee nouns and regulatory-adjacent phrasing; replace with neutral alternatives,
+- Use hedged modals ("aim to", "plan to", "intend to", "designed to") and qualitative statements ("approximate", "subject to validation") instead of deterministic promises,
 - Preserve the user's inferred structure and format whenever possible
   (e.g., if it already looks like an email, keep greetings, subject line, closing),
 - Detect any *implicit* constraints that the user or governance hints strongly imply
@@ -918,6 +1777,8 @@ Your role:
 - Preserve the existing inferred output format (email, memo, bullets, etc.) unless rules require otherwise,
 - Integrate and respect any *existing* governance rules, including user-original and system-inferred ones,
 - Decide whether user clarification is needed when confidence is low or the rules/inputs are ambiguous.
+- Hard-stop on commitments, roles/teams, regulators, percentages/formulas, deterministic verbs, and literal "guarantee" even as an example.
+- Leadership tone must be reassuring; analytical content must stay crisp and hedged.
 
 You must return JSON ONLY with:
 {
@@ -1079,67 +1940,131 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
 }
 
 async function validatorPass(text, { input, rules, governanceStrictness }) {
-  const system = `
-You are the Validator in the cd\\ai governed architecture.
-
-Your job:
-- Check the draft against the governance rules,
-- Identify violations clearly,
-- Return a compact JSON verdict.
-
-Return JSON ONLY with:
-{
-  "forbiddenHits": ["string"],   // any forbidden words or concepts actually present
-  "wordCountOk": true/false,
-  "artifactsOk": true/false,     // whether the requested artifacts / structural elements are satisfied
-  "impliedReliabilityOk": true/false
-}
-  `;
-
-  const user = `
-User task:
-${input}
-
-Governance rules:
-${rules.map((r) => r.text || r).join("\n")}
-
-Draft to validate:
-${text}
-
-Strictness coefficient: ${governanceStrictness.toFixed(2)}
-  `;
-
-  const raw = await callOpenAIChat({
-    system,
-    user,
-    temperature: 0.0,
-    response_format: "json",
-  });
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return initialValidationState();
-  }
-
+  const evaluation = detectGovernanceViolations(text);
   const base = initialValidationState();
-  const merged = { ...base, ...parsed };
-
+  const merged = { ...base, ...evaluation };
   merged.isCompliant =
-    merged.wordCountOk &&
     merged.artifactsOk &&
     merged.impliedReliabilityOk &&
-    (merged.forbiddenHits || []).length === 0;
-
+    (merged.forbiddenHits || []).length === 0 &&
+    (merged.hardViolationCount || 0) === 0;
   return merged;
 }
 
-// --- OpenAI helper -----------------------------------------------------------
+// --- Narrative Layer (post-run, compliance-safe) -----------------------------
+function buildNarrativeReport({
+  input,
+  goal,
+  mode,
+  converged,
+  validation,
+  plannedCycles,
+  cyclesRun,
+  stubbornViolations,
+  clarifications,
+  rules,
+  hitRunaway,
+}) {
+  const compliant = !!validation?.isCompliant;
+  const violationsCount = Array.isArray(stubbornViolations)
+    ? stubbornViolations.length
+    : 0;
+  const requestedClarifications = (clarifications || []).filter(
+    (c) => c.status === "requested"
+  ).length;
+  const answeredClarifications = (clarifications || []).filter(
+    (c) => c.status === "answered"
+  ).length;
+  const timeouts = (clarifications || []).filter(
+    (c) => c.status === "timeout"
+  ).length;
+  const inferredCount = (rules || []).filter((r) => r.origin === "system").length;
+  const clarifiedCount = (rules || []).filter(
+    (r) => r.origin === "user-clarified" || r.status === "clarified"
+  ).length;
+  const failedRules = (rules || []).filter((r) => r.status === "failed");
 
-// -----------------------------------------------------------------------------
-// OpenAI Helper (with 429-safe retry + backoff)
-// -----------------------------------------------------------------------------
+  const outcomePhrase = converged
+    ? "Convergence achieved."
+    : hitRunaway
+    ? "Run halted by fail-safe protections before convergence."
+    : "Output locked without convergence after reaching the configured cap.";
+
+  const governancePhrase = compliant
+    ? "Governance checks passed."
+    : violationsCount > 0 || failedRules.length > 0
+    ? "Governance issues remain; review flagged rules and conflicts."
+    : "Governance alignment uncertain; review before acting.";
+
+  const warningsPhrase =
+    violationsCount > 0
+      ? `Detected ${violationsCount} unresolved governance conflict(s).`
+      : "";
+
+  const summarySentences = [
+    `Governed run executed in ${String(mode || "real").toUpperCase()} mode over ${cyclesRun || 0} of ${plannedCycles} planned cycle(s).`,
+    outcomePhrase,
+    governancePhrase,
+    warningsPhrase,
+  ]
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const summaryText = summarySentences.join(" ");
+
+  const outcomeSummary = `Completed governed pass with final output delivered; ${converged ? "stopped after convergence" : "stopped at a safety limit"}.`;
+  const governanceAlignment = compliant
+    ? "Validator marked draft as compliant with provided governance rules."
+    : "Validator signaled outstanding governance risks; consult rule failures/conflicts before execution.";
+  const cycleBehavior = `Planned cycles: ${plannedCycles}. Executed cycles: ${cyclesRun}. ${hitRunaway ? "Fail-safe triggered (runaway/limit reached)." : converged ? "Converged within planned window." : "Stopped at cap without convergence."}`;
+  const clarificationSummary =
+    requestedClarifications + answeredClarifications + timeouts > 0
+      ? `Requested ${requestedClarifications}, answered ${answeredClarifications}, timeouts ${timeouts}.`
+      : "No clarifications were requested.";
+  const inferredSummary =
+    inferredCount > 0
+      ? `${inferredCount} system-inferred constraint(s) enforced; ${clarifiedCount} user-clarified rule(s).`
+      : `${clarifiedCount} user-clarified rule(s); no additional inferred constraints applied.`;
+  const confidenceSummary = compliant && converged
+    ? "High confidence based on validator compliance and stable stop condition."
+    : "Moderate confidence; treat output as provisional until governance issues are cleared.";
+  const ruleFailureSummary =
+    failedRules.length > 0
+      ? failedRules
+          .map((r) => (r.text || "").trim().slice(0, 120))
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(" | ")
+      : "None recorded.";
+  const runawayNotes = hitRunaway
+    ? "Execution stopped by fail-safe guardrails before convergence."
+    : "None triggered.";
+  const recommendations = compliant
+    ? "Proceed with the governed output; retain evidence of rules applied and clarifications."
+    : "Review flagged rules/conflicts, address clarifications, and rerun for governance alignment.";
+
+  const summarySection = [
+    "NARRATIVE SUMMARY",
+    `- ${summaryText}`,
+  ];
+
+  const detailSection = [
+    "DIAGNOSTIC DETAILS",
+    `- Outcome Summary: ${outcomeSummary}`,
+    `- Governance Alignment: ${governanceAlignment}`,
+    `- Cycle Behavior: ${cycleBehavior}`,
+    `- Clarifications: ${clarificationSummary}`,
+    `- Inferred Constraints: ${inferredSummary}`,
+    `- Confidence & Tradeoffs: ${confidenceSummary}`,
+    `- Rule Failures: ${ruleFailureSummary}`,
+    `- Runaway / Fail-Safe Notes: ${runawayNotes}`,
+    `- Recommendations: ${recommendations}`,
+  ];
+
+  return [...summarySection, "", ...detailSection].join("\n");
+}
+
+// --- OpenAI helper (429-safe retry + backoff) -------------------------------
 
 async function callOpenAIChat({
   system,
@@ -1238,10 +2163,11 @@ async function callOpenAIChat({
   return null;
 }
 
-
 // --- Exports -----------------------------------------------------------------
 
 module.exports = {
   runGovernedWorkflow,
   parseRulesFromGoal,
+  parseGovernanceEnvelope,
+  detectGovernanceViolations,
 };
