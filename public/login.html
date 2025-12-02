@@ -9,7 +9,6 @@
 
   <body>
     <div class="login-shell">
-
       <!-- Logo -->
       <img src="/assets/logo-app.png" class="login-logo" alt="cd\ai logo" />
 
@@ -19,8 +18,7 @@
       </div>
 
       <!-- Login card -->
-      <div class="login-card">
-
+      <form class="login-card" method="POST" action="/auth">
         <!-- Title (single line, centered) -->
         <div class="login-title">cd\ai | Governed Dual-Hemisphere MVP</div>
 
@@ -31,63 +29,38 @@
 
         <!-- Password row -->
         <div class="password-row">
-          <input 
-            id="password-input" 
-            class="password-input" 
-            type="password" 
-            placeholder="Enter access password…" 
-            autocomplete="off"
+          <input
+            id="password-input"
+            class="password-input"
+            type="password"
+            name="password"
+            placeholder="Enter access password..."
+            autocomplete="current-password"
+            required
           />
 
           <!-- Blue login button with white > -->
-          <button id="login-button" class="login-button" title="Login">
+          <button class="login-button" title="Login" type="submit">
             >
           </button>
         </div>
 
         <!-- Error -->
         <div id="login-error" class="login-error"></div>
-
-      </div> <!-- end login-card -->
+      </form>
 
       <!-- Footer -->
       <div class="login-footer">
-        Copyright 2025 | Change Directories, LLC – Patent Pending Confidential MVP Demo
+        Copyright 2025 | Change Directories, LLC — Patent Pending Confidential
+        MVP Demo
       </div>
-
     </div>
 
     <script>
-      // Login handler
-      const loginBtn = document.getElementById("login-button");
-      const pwdInput = document.getElementById("password-input");
-      const errorBox = document.getElementById("login-error");
-
-      loginBtn.addEventListener("click", submitLogin);
-      pwdInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") submitLogin();
-      });
-
-      function submitLogin() {
-        const password = pwdInput.value.trim();
-        errorBox.textContent = "";
-
-        fetch("/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password })
-        })
-          .then(r => r.json())
-          .then(data => {
-            if (data.ok) {
-              window.location.href = "/";
-            } else {
-              errorBox.textContent = "Incorrect password.";
-            }
-          })
-          .catch(() => {
-            errorBox.textContent = "Server error. Try again.";
-          });
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "1") {
+        document.getElementById("login-error").textContent =
+          "Incorrect password";
       }
     </script>
   </body>

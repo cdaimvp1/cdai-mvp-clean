@@ -26,10 +26,6 @@ const chatSendButtonEl = document.getElementById("chat-send-button");
 const chatHistoryEl = document.getElementById("chat-history");
 const chatResetButtonEl = document.getElementById("chat-reset-button");
 
-// Governance Rules
-const goalInputEl = document.getElementById("goal-input");
-const goalSubmitButtonEl = document.getElementById("goal-submit-button");
-const goalResetButtonEl = document.getElementById("goal-reset-button");
 const rulesListEl = document.getElementById("rules-list");
 
 // Logs
@@ -47,6 +43,7 @@ const modeRealBtn = document.getElementById("mode-real");
 const modeFastBtn = document.getElementById("mode-fast");
 const modeTurboBtn = document.getElementById("mode-turbo");
 const logoutButtonEl = document.getElementById("logout-button");
+const gilIndicatorEl = document.getElementById("gil-indicator");
 
 // Status
 const statusLabelDynamic = document.getElementById("status-label-dynamic");
@@ -63,6 +60,12 @@ const rulesSummaryEl = document.getElementById("rules-summary");
 let currentPerfMode = "real";
 let latestLedger = [];
 let sendCooldown = false;
+let gilStateActive = false;
+let lastRules = [];
+let pendingTaskText = null;
+let rulesFinalized = false;
+const chatInputMinHeight = 80;
+const chatInputMaxHeight = 160;
 
 // =============================================================
 // HELPERS
@@ -138,15 +141,32 @@ function sendUserMessage(text) {
 
   appendUserMessage(text);
 
+  pendingTaskText = text;
   socket.emit("run-workflow", {
     input: text,
-    goal: goalInputEl?.value.trim() || "",
-    maxCycles: Number(cycleSliderEl?.value || 5),
+    goal: "", // rules are managed server-side
+    maxCycles:
+      Number(cycleSliderEl?.value || 0) === 0
+        ? null
+        : Number(cycleSliderEl?.value || 0),
     governanceStrictness: Number(strictnessSliderEl?.value || 0.85),
     perfMode: currentPerfMode,
   });
 
   if (chatInputEl) chatInputEl.value = "";
+}
+
+// Autosize chat input like iOS: expand up to a max, then scroll.
+function autosizeChatInput() {
+  if (!chatInputEl) return;
+  chatInputEl.style.height = "auto";
+  const newHeight = Math.min(
+    chatInputMaxHeight,
+    Math.max(chatInputMinHeight, chatInputEl.scrollHeight)
+  );
+  chatInputEl.style.height = `${newHeight}px`;
+  chatInputEl.style.overflowY =
+    chatInputEl.scrollHeight > chatInputMaxHeight ? "auto" : "hidden";
 }
 
 // =============================================================
@@ -167,25 +187,14 @@ chatInputEl?.addEventListener("keydown", (e) => {
   }
 });
 
+chatInputEl?.addEventListener("input", autosizeChatInput);
+
 // Reset conversation
 chatResetButtonEl?.addEventListener("click", () => {
   if (chatHistoryEl) chatHistoryEl.innerHTML = "";
   socket.emit("reset-conversation");
-});
-
-// Governance submission
-goalSubmitButtonEl?.addEventListener("click", () => {
-  socket.emit("submit-governance", {
-    goal: goalInputEl?.value.trim() || "",
-  });
-});
-
-// Governance reset
-goalResetButtonEl?.addEventListener("click", () => {
-  if (goalInputEl) goalInputEl.value = "";
-  if (rulesListEl) rulesListEl.innerHTML = "";
-  if (rulesSummaryEl) rulesSummaryEl.innerHTML = "";
-  socket.emit("reset-governance");
+  gilStateActive = false;
+  updateGilIndicator();
 });
 
 // Logout
@@ -202,12 +211,33 @@ logoutButtonEl?.addEventListener("click", async () => {
 // =============================================================
 // SLIDERS & MODES
 // =============================================================
+function updateStrictnessLabel() {
+  if (strictnessValueEl && strictnessSliderEl) {
+    const val = Number(strictnessSliderEl.value || 0).toFixed(2);
+    strictnessValueEl.textContent = val;
+  }
+}
+
+function updateCycleLabel() {
+  if (cycleValueEl && cycleSliderEl) {
+    const val = Number(cycleSliderEl.value || 0);
+    cycleValueEl.textContent = val === 0 ? "OFF" : String(val);
+  }
+}
+
+function updateGilIndicator() {
+  if (gilIndicatorEl) {
+    gilIndicatorEl.classList.toggle("gil-on", gilStateActive);
+  }
+}
+
 strictnessSliderEl?.addEventListener("input", () => {
-  if (strictnessValueEl) strictnessValueEl.textContent = strictnessSliderEl.value;
+  updateStrictnessLabel();
 });
 
 cycleSliderEl?.addEventListener("input", () => {
-  if (cycleValueEl) cycleValueEl.textContent = cycleSliderEl.value;
+  updateCycleLabel();
+  updateGilIndicator();
 });
 
 function setMode(mode) {
@@ -220,11 +250,18 @@ function setMode(mode) {
   if (mode === "real") modeRealBtn?.classList.add("active");
   if (mode === "fast") modeFastBtn?.classList.add("active");
   if (mode === "turbo") modeTurboBtn?.classList.add("active");
+  updateGilIndicator();
 }
 
 modeRealBtn?.addEventListener("click", () => setMode("real"));
 modeFastBtn?.addEventListener("click", () => setMode("fast"));
 modeTurboBtn?.addEventListener("click", () => setMode("turbo"));
+
+// Initialize slider labels and indicator on load
+updateStrictnessLabel();
+updateCycleLabel();
+updateGilIndicator();
+autosizeChatInput();
 
 // =============================================================
 // LEDGER DOWNLOAD
@@ -264,18 +301,19 @@ socket.on("telemetry", (msg) => {
     // ---------------------------------------------------------
     // GOVERNANCE RULES + SUMMARY
     // ---------------------------------------------------------
-    case "governance-rules": {
+case "governance-rules":
+    case "governance-rules-final": {
       if (!rulesListEl) break;
+
+      const rules = Array.isArray(msg.rules) ? msg.rules : lastRules;
+      lastRules = rules;
+      if (msg.rulesFinalized !== undefined) {
+        rulesFinalized = !!msg.rulesFinalized;
+      }
 
       rulesListEl.innerHTML = "";
 
-      const rules = Array.isArray(msg.rules) ? msg.rules : [];
-      const summary = msg.summary || {
-        passed: msg.passed ?? 0,
-        failed: msg.failed ?? 0,
-        clarified: msg.clarified ?? 0,
-        total: rules.length,
-      };
+      let counts = { passed: 0, failed: 0, clarified: 0, pending: 0, total: rules.length };
 
       rules.forEach((ruleObj, index) => {
         const li = document.createElement("li");
@@ -286,7 +324,35 @@ socket.on("telemetry", (msg) => {
 
         const text = isStringRule ? ruleObj : ruleObj.text || "";
         const origin = isStringRule ? "user" : ruleObj.origin || "user";
-        const status = isStringRule ? "pending" : ruleObj.status || "pending";
+        const statusRaw = isStringRule ? null : ruleObj.status;
+        const status =
+          statusRaw === "passed" || statusRaw === "failed" || statusRaw === "clarified"
+            ? statusRaw
+            : statusRaw === "user-clarified"
+            ? "clarified"
+            : "unknown";
+
+        if (status === "passed") counts.passed += 1;
+        else if (status === "failed") counts.failed += 1;
+        else if (status === "clarified") counts.clarified += 1;
+        else counts.pending += 1;
+
+        const statusIcon =
+          status === "passed"
+            ? "✓"
+            : status === "failed"
+            ? "✕"
+            : status === "clarified"
+            ? "⚠"
+            : "•";
+        const statusClass =
+          status === "passed"
+            ? "rule-status-passed"
+            : status === "failed"
+            ? "rule-status-failed"
+            : status === "clarified"
+            ? "rule-status-pending"
+            : "rule-status-unknown";
 
         // Color logic
         let color = "#ffffff";
@@ -298,9 +364,10 @@ socket.on("telemetry", (msg) => {
         li.style.color = color;
 
         const statusLabel =
-          status && status !== "pending" ? `:${status}` : "";
+          status && status !== "unknown" ? `:${status}` : "";
 
         li.innerHTML = `
+          <span class="rule-status-icon ${statusClass}">${statusIcon}</span>
           <span class="rule-index">${index + 1}.</span>
           <span class="rule-text">${text}</span>
           <span class="rule-origin">[${origin}${statusLabel}]</span>
@@ -309,51 +376,28 @@ socket.on("telemetry", (msg) => {
         rulesListEl.appendChild(li);
       });
 
-      // ---- Summary block with clickable filters -----------------
+      // ---- Summary block -----------------
       if (rulesSummaryEl) {
         rulesSummaryEl.innerHTML = `
           <div class="summary-title">Governance Compliance Summary</div>
 
-          <div class="summary-row summary-pass" data-target="passed">
-            ✔ ${summary.passed} passed
+          <div class="summary-row summary-pass">
+            ✔ ${counts.passed} passed
           </div>
-          <div class="summary-row summary-clarified" data-target="clarified">
-            ⚠ ${summary.clarified} required clarification
+          <div class="summary-row summary-clarified">
+            ⚠ ${counts.clarified} required clarification
           </div>
-          <div class="summary-row summary-fail" data-target="failed">
-            ✖ ${summary.failed} failed
+          <div class="summary-row summary-fail">
+            ✖ ${counts.failed} failed
+          </div>
+          <div class="summary-row" style="color:#888;">
+            • ${counts.pending} pending
           </div>
 
           <div style="margin-top:6px; opacity:0.7;">
-            Total rules: ${summary.total}
+            Total rules: ${counts.total}
           </div>
         `;
-
-        // Clicking a row scrolls & highlights the matching rules
-        rulesSummaryEl
-          .querySelectorAll("[data-target]")
-          .forEach((el) => {
-            el.style.cursor = "pointer";
-            el.addEventListener("click", () => {
-              const target = el.dataset.target;
-              const items = Array.from(rulesListEl.children).filter((li) =>
-                li.querySelector(".rule-origin")?.textContent.includes(target)
-              );
-
-              if (!items.length) return;
-
-              const first = items[0];
-              first.scrollIntoView({ behavior: "smooth", block: "center" });
-
-              items.forEach((li) => {
-                const oldBg = li.style.background;
-                li.style.background = "rgba(255,255,255,0.10)";
-                setTimeout(() => {
-                  li.style.background = oldBg || "transparent";
-                }, 1000);
-              });
-            });
-          });
       }
 
       break;
@@ -384,11 +428,31 @@ socket.on("telemetry", (msg) => {
       break;
 
     case "final-output":
-      appendFinalMessage(msg.text);
+      {
+        const showFinal =
+          msg.text && (!msg.narrative || msg.text !== msg.narrative);
+        if (showFinal) appendFinalMessage(msg.text);
+        if (msg.narrative) {
+          appendSystemMessage(msg.narrative);
+        } else {
+          console.warn("Missing narrative in final-output telemetry.");
+        }
+      }
+      break;
+    case "governance-response":
+      if (msg.text) appendSystemMessage(msg.text);
       break;
 
     case "clarification-request":
       appendSystemMessage("⚠️ Clarification required:\n" + msg.question);
+      break;
+
+    case "gil-state":
+      {
+        const dot = document.getElementById("gil-indicator");
+        gilStateActive = !!msg.active;
+        updateGilIndicator();
+      }
       break;
 
     default:
