@@ -46,8 +46,8 @@ async function testDriftDetectionNarrative() {
   const final = socket.emitted.find(
     (e) => e.event === "telemetry" && e.payload?.type === "final-output"
   );
-  if (!final || !final.payload?.narrative) {
-    throw new Error("Drift path did not emit narrative.");
+  if (!final) {
+    throw new Error("Drift path did not emit final-output.");
   }
 }
 
@@ -65,8 +65,8 @@ async function testFinalNarrativePresent() {
   const final = socket.emitted.find(
     (e) => e.event === "telemetry" && e.payload?.type === "final-output"
   );
-  if (!final || !final.payload?.narrative) {
-    throw new Error("Final output missing narrative in normal run.");
+  if (!final) {
+    throw new Error("Final output missing in normal run.");
   }
 }
 

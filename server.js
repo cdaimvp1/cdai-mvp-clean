@@ -54,6 +54,7 @@ if (!OPENAI_API_KEY) {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const socketStateStore = new Map();
 
 // Parse bodies (for /auth)
 app.use(express.json());
@@ -145,6 +146,44 @@ app.post("/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 
+// Clear governance rules (global reset for current session sockets)
+app.post("/clear-rules", (req, res) => {
+  let resetCount = 0;
+  socketStateStore.forEach((state, socketId) => {
+    state.governanceRules = [];
+    state.governanceEnvelope = null;
+    state.pendingDrift = null;
+    state.rulesFrozen = false;
+    state.rulesFinalized = false;
+    state.strictnessOverride = null;
+    state.maxCyclesOverride = null;
+    state.confidenceScore = null;
+    const ledgerEntry = {
+      timestamp: new Date().toISOString(),
+      event: "rule_reset",
+      stage: "Governance",
+      cycle: 0,
+      summary: "Governance rules cleared via /clear-rules endpoint.",
+    };
+    state.governanceLedger = [ledgerEntry];
+    const socketInstance = io.sockets.sockets.get(socketId);
+    if (socketInstance) {
+      emitRules(socketInstance, state);
+      socketInstance.emit("telemetry", {
+        type: "governance-response",
+        text: "All governance rules have been cleared.",
+      });
+      socketInstance.emit("telemetry", {
+        type: "ledger",
+        entries: state.governanceLedger,
+      });
+    }
+    resetCount += 1;
+  });
+
+  res.json({ success: true, resetCount });
+});
+
 // Health endpoint for Render
 app.get("/health", (req, res) => {
   res.json({ ok: true });
@@ -182,7 +221,10 @@ io.on("connection", (socket) => {
     strictnessOverride: null,
     maxCyclesOverride: null,
     confidenceScore: null,
+    pendingInferredRule: null,
+    awaitingInferredRuleConfirmation: false,
   };
+  socketStateStore.set(socket.id, socketState);
 
   socket.on("reset-conversation", () => {
     socket.emit("telemetry", { type: "reset" });
@@ -201,10 +243,36 @@ io.on("connection", (socket) => {
       const input = typeof text === "string" ? text.trim() : "";
       if (!input) return;
 
+      if (socket._pendingClarification) {
+        const lower = input.toLowerCase().trim();
+        const isYes = /^y(es)?|ok|sure|include/.test(lower);
+        const isNo = /^n(o)?/.test(lower);
+        const isClarify = lower.startsWith("clarify");
+        socket.emit("clarification-response", {
+          cycle: socket._pendingClarification.cycle,
+          answer: isClarify ? input : isYes ? "yes" : isNo ? "no" : input,
+        });
+        socket._pendingClarification = null;
+        return;
+      }
+
       const goal =
         typeof socketState.governanceGoal === "string"
           ? socketState.governanceGoal
           : "";
+
+      // Per-task reset: clear any persisted rules before starting a new task.
+      socketState.governanceRules = [];
+      socketState.activeRules = [];
+      socketState.pendingDrift = null;
+      socketState.governanceEnvelope = null;
+      socketState.rulesFrozen = false;
+      socketState.rulesFinalized = false;
+      socketState.strictnessOverride = null;
+      socketState.maxCyclesOverride = null;
+      socketState.confidenceScore = null;
+      socket._pendingClarification = null;
+      socket._pendingClarification = null;
 
       console.log("Chat-based workflow:", {
         input,
@@ -222,12 +290,10 @@ io.on("connection", (socket) => {
         }
 
         let envelope;
-        if (socketState.rulesFrozen && socketState.governanceEnvelope) {
-          envelope = socketState.governanceEnvelope;
-        } else {
-          envelope = parseGovernanceEnvelope(input);
-          socketState.governanceEnvelope = envelope;
-        }
+        envelope = parseGovernanceEnvelope(input); // always parse fresh
+        socketState.governanceEnvelope = envelope;
+
+        const requiresGovernedOutput = envelope?.requiresGovernedOutput === true;
 
         await runGovernedWorkflow(socket, {
           input,
@@ -265,6 +331,32 @@ io.on("connection", (socket) => {
       let text = typeof input === "string" ? input.trim() : "";
       if (!text) return;
 
+      // If a pending inferred rule confirmation is awaiting, treat this message as the answer.
+      if (socket._pendingClarification) {
+        const answer = text.toLowerCase();
+        const lower = answer.trim();
+        const isYes = /^y(es)?|ok|sure|include/.test(lower);
+        const isNo = /^n(o)?/.test(lower);
+        const isClarify = lower.startsWith("clarify");
+        socket.emit("clarification-response", {
+          cycle: socket._pendingClarification.cycle,
+          answer: isClarify ? text : isYes ? "yes" : isNo ? "no" : text,
+        });
+        socket._pendingClarification = null;
+        return;
+      }
+
+      // Per-task reset: clear any persisted rules before starting a new task.
+      socketState.governanceRules = [];
+      socketState.activeRules = [];
+      socketState.pendingDrift = null;
+      socketState.governanceEnvelope = null;
+      socketState.rulesFrozen = false;
+      socketState.rulesFinalized = false;
+      socketState.strictnessOverride = null;
+      socketState.maxCyclesOverride = null;
+      socketState.confidenceScore = null;
+
       console.log("Starting workflow:", {
         input: text,
         goal,
@@ -296,10 +388,10 @@ io.on("connection", (socket) => {
               reason: "drift-confirmation",
             });
             emitRules(socket, socketState);
-            const narrative = await generateGovernanceNarrative({
-              summary: "Cleared rules after drift confirmation.",
+            socket.emit("telemetry", {
+              type: "governance-response",
+              text: "Rules cleared after drift confirmation.",
             });
-            socket.emit("telemetry", { type: "final-output", text: narrative });
             // proceed with stored task after clearing
             text = socketState.pendingDrift.task || text;
           } else if (declineClear) {
@@ -311,11 +403,10 @@ io.on("connection", (socket) => {
               raw: text,
               summary: "User declined to clear rules after drift prompt.",
             });
-            const narrative = await generateGovernanceNarrative({
-              summary:
-                "User declined to clear rules after drift warning; proceeding with existing rules.",
+            socket.emit("telemetry", {
+              type: "governance-response",
+              text: "User declined to clear rules after drift warning; keeping existing rules.",
             });
-            socket.emit("telemetry", { type: "final-output", text: narrative });
             text = socketState.pendingDrift.task || text;
           } else {
             socket.emit("telemetry", {
@@ -328,13 +419,13 @@ io.on("connection", (socket) => {
           socketState.pendingDrift = null;
         }
 
-        let envelope;
-        if (socketState.rulesFrozen && socketState.governanceEnvelope) {
-          envelope = socketState.governanceEnvelope;
-        } else {
-          envelope = parseGovernanceEnvelope(text);
-          socketState.governanceEnvelope = envelope;
+        if (!socketState.governanceRules || socketState.governanceRules.length === 0) {
+          socketState.pendingDrift = null;
         }
+
+        let envelope;
+        envelope = parseGovernanceEnvelope(text); // always parse fresh
+        socketState.governanceEnvelope = envelope;
 
         // Initialize PCGP governance envelope for this submission
 
@@ -415,15 +506,10 @@ io.on("connection", (socket) => {
         };
 
         const narrate = async (summary) => {
-          const narrative = await generateGovernanceNarrative({
-            summary,
-            rules: socketState.governanceRules,
-            intent,
-          });
+          // Avoid OpenAI narrative here; send a concise governance-response instead
           socket.emit("telemetry", {
-            type: "final-output",
-            text: narrative,
-            narrative,
+            type: "governance-response",
+            text: summary,
           });
           socketState.governanceLedger.push({
             timestamp: new Date().toISOString(),
@@ -431,7 +517,7 @@ io.on("connection", (socket) => {
             stage: "Governance",
             cycle: 0,
             summary,
-            narrative,
+            narrative: summary,
           });
         };
 
@@ -578,6 +664,9 @@ io.on("connection", (socket) => {
         }
 
         // Task or mixed with task: proceed to workflow
+        const requiresGovernedOutput =
+          socketState.governanceEnvelope?.requiresGovernedOutput === true;
+
         await runGovernedWorkflow(socket, {
           input: text,
           goal,
@@ -591,6 +680,7 @@ io.on("connection", (socket) => {
           baseLedger: socketState.governanceLedger,
           governanceEnvelope: socketState.governanceEnvelope,
           confidenceScore: socketState.confidenceScore,
+          requiresGovernedOutput,
         });
         socketState.governanceLedger = [];
       } catch (err) {
@@ -613,6 +703,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
+    socketStateStore.delete(socket.id);
   });
 });
 
@@ -664,37 +755,21 @@ function detectGovernanceCommand(rawInputText) {
   if (!text) return result;
 
   const matchNumber = text.match(/(\d+)/);
+  const explicitPhrases = [
+    { type: "clear-rules", pattern: /\b(clear|reset)\s+rules\b/ },
+    { type: "clear-rules", pattern: /\b(clear|reset)\s+governance\b/ },
+    { type: "show-rules", pattern: /\b(show|list)\s+rules\b/ },
+    { type: "strictness-off", pattern: /\bstrictness\s+off\b/ },
+    { type: "strictness-on", pattern: /\bstrictness\s+on\b/ },
+    { type: "set-max-cycles", pattern: /\bset\s+max\s+cycles\b|\bmax\s+cycles\b/ },
+    { type: "freeze-rules", pattern: /\b(freeze|lock)\s+rules\b/ },
+    { type: "unfreeze-rules", pattern: /\b(unfreeze|unlock)\s+rules\b/ },
+  ];
 
-  if (
-    text.includes("clear rules") ||
-    text.includes("clear governance") ||
-    text.includes("reset rules") ||
-    text.includes("reset governance")
-  ) {
-    return { isCommand: true, commandType: "clear-rules", commandArgs: {} };
-  }
-
-  if (text.includes("show rules") || text.includes("list rules")) {
-    return { isCommand: true, commandType: "show-rules", commandArgs: {} };
-  }
-
-  if (text.includes("strictness off")) {
-    return { isCommand: true, commandType: "strictness-off", commandArgs: {} };
-  }
-  if (text.includes("strictness on")) {
-    return { isCommand: true, commandType: "strictness-on", commandArgs: {} };
-  }
-
-  if (text.includes("set max cycles") || text.includes("max cycles")) {
-    const val = matchNumber ? Number(matchNumber[1]) : null;
-    return { isCommand: true, commandType: "set-max-cycles", commandArgs: { value: val } };
-  }
-
-  if (text.includes("freeze rules") || text.includes("lock rules")) {
-    return { isCommand: true, commandType: "freeze-rules", commandArgs: {} };
-  }
-  if (text.includes("unfreeze rules") || text.includes("unlock rules")) {
-    return { isCommand: true, commandType: "unfreeze-rules", commandArgs: {} };
+  for (const { type, pattern } of explicitPhrases) {
+    if (pattern.test(text)) {
+      return { isCommand: true, commandType: type, commandArgs: {} };
+    }
   }
 
   return result;

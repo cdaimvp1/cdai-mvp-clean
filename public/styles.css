@@ -191,6 +191,34 @@ input[type="range"]::-webkit-slider-thumb {
   color: #fff;
 }
 
+.control-button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #151515;
+  color: #f9fafb;
+  cursor: pointer;
+  font-size: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.control-button:focus {
+  outline: none;
+  border-color: #0a84ff;
+}
+
+.clear-rules-button {
+  border-color: #ffb347;
+  color: #ffcf8a;
+}
+
+.clear-rules-button:hover {
+  background: #1e1e1e;
+  border-color: #ffcf8a;
+  box-shadow: 0 3px 8px rgba(255, 191, 105, 0.2);
+}
+
 /* ==========================================================================
    CYCLE LIMIT
    ========================================================================== */

@@ -43,6 +43,7 @@ const modeRealBtn = document.getElementById("mode-real");
 const modeFastBtn = document.getElementById("mode-fast");
 const modeTurboBtn = document.getElementById("mode-turbo");
 const logoutButtonEl = document.getElementById("logout-button");
+const clearRulesButtonEl = document.getElementById("clear-rules-button");
 const gilIndicatorEl = document.getElementById("gil-indicator");
 
 // Status
@@ -142,8 +143,11 @@ function sendUserMessage(text) {
   appendUserMessage(text);
 
   pendingTaskText = text;
+  const isRuleMessage = /rule:|add rule|governance:|constraints:|the following rules/i.test(text);
+  const mode = isRuleMessage ? "rules" : "task";
   socket.emit("run-workflow", {
     input: text,
+    mode,
     goal: "", // rules are managed server-side
     maxCycles:
       Number(cycleSliderEl?.value || 0) === 0
@@ -205,6 +209,24 @@ logoutButtonEl?.addEventListener("click", async () => {
     console.error("Logout error", e);
   } finally {
     window.location.href = "/login";
+  }
+});
+
+clearRulesButtonEl?.addEventListener("click", async () => {
+  try {
+    const resp = await fetch("/clear-rules", { method: "POST" });
+    if (resp.ok) {
+      appendSystemMessage("All governance rules have been cleared.");
+      if (rulesListEl) rulesListEl.innerHTML = "";
+      if (rulesSummaryEl) rulesSummaryEl.textContent = "";
+      lastRules = [];
+      rulesFinalized = false;
+    } else {
+      appendSystemMessage("Unable to clear governance rules right now.");
+    }
+  } catch (err) {
+    console.error("Clear rules error", err);
+    appendSystemMessage("Error clearing governance rules.");
   }
 });
 
