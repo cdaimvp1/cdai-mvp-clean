@@ -189,7 +189,6 @@ input[type="range"]::-webkit-slider-thumb {
   background: #0a84ff;
   border-color: #0a84ff;
   color: #fff;
-<<<<<<< HEAD
 }
 
 .control-button {
@@ -218,8 +217,6 @@ input[type="range"]::-webkit-slider-thumb {
   background: #1e1e1e;
   border-color: #ffcf8a;
   box-shadow: 0 3px 8px rgba(255, 191, 105, 0.2);
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 }
 
 /* ==========================================================================

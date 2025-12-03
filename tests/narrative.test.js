@@ -101,7 +101,6 @@ async function assertNarrativePresent({ perfMode, failValidation }) {
     throw new Error(`No final-output telemetry for mode=${perfMode}`);
   }
 
-<<<<<<< HEAD
   const rulesEvent = socket.emitted.find(
     (e) => e.event === "telemetry" && e.payload?.type === "governance-rules"
   );
@@ -116,10 +115,6 @@ async function assertNarrativePresent({ perfMode, failValidation }) {
     if (final.payload.narrative && final.payload.narrative.trim()) {
       // Ungoverned runs may legitimately omit narrative; allow empty narrative.
     }
-=======
-  if (!final.payload.narrative || typeof final.payload.narrative !== "string" || !final.payload.narrative.trim()) {
-    throw new Error(`Narrative missing or empty for mode=${perfMode}`);
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   }
 }
 

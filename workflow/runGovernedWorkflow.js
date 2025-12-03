@@ -11,16 +11,12 @@ const MODEL_NAME = "gpt-4o";
 const {
   checkContextDrift,
   generateGovernanceNarrative,
-<<<<<<< HEAD
   extractExplicitRulesViaAPI,
   inferRulesViaAPI,
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 } = require("./openaiClient");
 
 const HARD_MAX_CYCLES = 25;
 
-<<<<<<< HEAD
 const CANONICAL_SECTIONS = ["Root Cause", "Remediation", "Governance Enhancement", "Leadership Summary"];
 
 const COMMITMENT_REGEX =
@@ -31,21 +27,6 @@ const ROLES_REGEX =
   /(task force|task forces|committee|committees|board|boards|team|teams|department|departments|oversight group|oversight groups|executive|executives|leadership team|leadership teams|data science group|data science groups)/gi;
 const REGULATORY_REGEX =
   /(ISO(-)?like|regulatory alignment|audit-?ready|oversight parallels compliance|mapped to controls)/gi;
-=======
-const CANONICAL_SECTIONS = [
-  "Root Cause",
-  "Remediation",
-  "Governance Enhancement",
-  "Leadership Summary",
-];
-
-const COMMITMENT_REGEX =
-  /\bwill\b|\bwill\s+likely\b|\bis\s+expected\s+to\b|\bexpected\s+to\b|\bcommit\b|\bensure\b|\bguarantee\b|fully implemented|deterministic model|\b\d+%\b|\b\d{2,}\s*(confidence|certainty)|\b(per\s+cent|percent)\b/gi;
-const ROLES_REGEX =
-  /(task force|committee|board|team|department|oversight group|working group|executive team|council|governance circle|working council|oversight cell)/gi;
-const REGULATORY_REGEX =
-  /(ISO(-)?like|regulatory alignment|audit-ready|audit ready|compliance review|parallels compliance|oversight parallels compliance|mapped to controls|mapped to ministries)/gi;
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 const FORMULA_REGEX = /\b\d+\s*[\+\-\*\/]\s*\d+\b/gi;
 const PROSE_FORMULA_REGEX =
   /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+of\s+(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(equal|equals|is)\b/gi;
@@ -65,14 +46,11 @@ const REAL_INSTITUTIONS = [
   "finance department",
   "operations department",
   "ministry",
-<<<<<<< HEAD
   "nist",
   "european union",
   "united nations",
   "department of defense",
   "us government",
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 ];
 
 function normalizeRuleObject(ruleText, { confidence = 0.78, rationale = "" } = {}) {
@@ -107,17 +85,8 @@ function extractSections(text) {
 
 function coerceToCanonicalStructure(text) {
   const sections = extractSections(text);
-<<<<<<< HEAD
   const rebuilt = CANONICAL_SECTIONS.map((section) => {
     const body = sections[section] || "Pending clarification; no content provided.";
-=======
-  const missing = CANONICAL_SECTIONS.filter((s) => !sections[s]);
-  const hasAll = missing.length === 0;
-  if (hasAll) return text;
-
-  const rebuilt = CANONICAL_SECTIONS.map((section) => {
-    const body = sections[section] || "Pending clarification; provided content was remapped to canonical sections.";
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     return `${section}:\n${body}`.trim();
   });
 
@@ -130,25 +99,15 @@ function replaceDeterministicLanguage(text) {
     if (/guarantee/i.test(m)) return "avoid definitive promise";
     if (/ensure/i.test(m)) return "aim to support";
     if (/commit/i.test(m)) return "plan to";
-<<<<<<< HEAD
     if (/will/i.test(m)) return "intend to";
-=======
-    if (/will\s+likely/i.test(m)) return "likely to";
-    if (/expected to/i.test(m)) return "likely to";
-    if (/will/i.test(m)) return "intend to";
-    if (/deterministic model/i.test(m)) return "model subject to validation";
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     if (/%/.test(m) || /confidence|certainty|per\s+cent|percent/i.test(m))
       return "approximate (subject to validation)";
     return "aim to";
   });
 
   output = output.replace(DETERMINISTIC_NUMERIC_REGEX, "approximate (subject to validation)");
-<<<<<<< HEAD
   output = output.replace(CONFIDENCE_PHRASE_REGEX, "approximate (subject to validation)");
   output = output.replace(PERCENT_REGEX, "approximate (subject to validation)");
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   output = output.replace(FORMULA_REGEX, "calculation (approximate only)");
   output = output.replace(SPELLED_PERCENT_REGEX, "approximate (subject to validation)");
   output = output.replace(PROSE_FORMULA_REGEX, "calculation (approximate only)");
@@ -167,7 +126,6 @@ function applyCycleOneFilters(text) {
   output = replaceDeterministicLanguage(output);
   return output;
 }
-<<<<<<< HEAD
 
 function isHighRiskTask(taskText = "") {
   const lower = (taskText || "").toLowerCase();
@@ -204,8 +162,6 @@ function computeStrictnessLevel({ intent, rules = [], taskLevelRules = [], tasks
   console.debug(`[Governance] Strictness level for this request: ${strictness}`);
   return strictness;
 }
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 
 if (!OPENAI_API_KEY) {
   console.warn(
@@ -224,7 +180,6 @@ function parseGovernanceEnvelope(rawInputText) {
   const decoyInstruction = [];
   const conditionalLanguage = [];
   const metaWarnings = [];
-<<<<<<< HEAD
   let requiresGovernedOutput = false;
   const hardResetRules =
     /\bapply only these rules\b/.test(lower) ||
@@ -257,31 +212,6 @@ function parseGovernanceEnvelope(rawInputText) {
     requiredSections: [],
     orderEnforced: false,
     authoritativeSource: "user",
-=======
-
-  const forbiddenContent = {
-    percentages: false,
-    mathFormulas: false,
-    realInstitutions: false,
-    roles: false,
-  };
-
-  const safetyBoundaries = {
-    noSpeculation: false,
-    noLegalConclusions: false,
-    conditionalLanguageOnly: false,
-  };
-
-  const toneSchema = {
-    analyticalTone: "crisp + hedged",
-    executiveSummaryPlainLanguage: "reassuring + plain language",
-  };
-
-  const structureSchema = {
-    requiredSections: [...CANONICAL_SECTIONS],
-    orderEnforced: true,
-    authoritativeSource: "latest-explicit-or-canonical",
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   };
 
   function addExplicit(textRule, confidence = 0.82, rationale = "") {
@@ -311,7 +241,6 @@ function parseGovernanceEnvelope(rawInputText) {
     }
   });
 
-<<<<<<< HEAD
   if (!hardResetRules && (/\bno speculation\b|\bnot speculate\b|\bno guessing\b/.test(lower))) {
     safetyBoundaries.noSpeculation = true;
     addExplicit("Avoid speculation; flag missing information explicitly.", 0.86, "Prompt forbids speculation.");
@@ -438,67 +367,6 @@ function parseGovernanceEnvelope(rawInputText) {
     !hardResetRules &&
     (/\bcall out missing\b|\bif missing\b|\bif unclear\b|\bif vague\b|\blacking details\b/.test(lower))
   ) {
-=======
-  if (/\bno speculation\b|\bnot speculate\b|\bno guessing\b/.test(lower)) {
-    safetyBoundaries.noSpeculation = true;
-    addExplicit("Avoid speculation; flag missing information explicitly.", 0.86, "Prompt forbids speculation.");
-  }
-  if (/\bno legal\b|\bno legal conclusions\b|\bavoid legal conclusions\b/.test(lower)) {
-    safetyBoundaries.noLegalConclusions = true;
-    addExplicit("Avoid legal conclusions or regulatory determinations.", 0.84, "Prompt forbids legal conclusions.");
-  }
-  if (/\bno percentages\b|\bno percent\b|%\b/.test(lower)) {
-    forbiddenContent.percentages = true;
-    addExplicit("Avoid percentages unless unavoidable; prefer qualitative ranges.", 0.83, "Prompt mentions no %/formulas.");
-  }
-  if (/\bno math\b|\bno formulas\b|\bmath formulas\b/.test(lower)) {
-    forbiddenContent.mathFormulas = true;
-    addExplicit("Do not include math formulas.", 0.82, "Prompt forbids formulas.");
-  }
-  if (/\bno real (standards|institutions|regulations|governments|countries)\b/.test(lower)) {
-    forbiddenContent.realInstitutions = true;
-    addExplicit("Avoid real institutions/standards/regulations.", 0.83, "Prompt forbids real institutions.");
-  }
-  if (/\bno roles?\b|\bno departments?\b|\bno teams?\b|\bno committees?\b|\bno boards?\b|\bno councils?\b|\bno ministries?\b/.test(lower)) {
-    forbiddenContent.roles = true;
-    addExplicit("Do not reference roles, departments, teams, committees, or boards.", 0.85, "Prompt forbids roles/departments.");
-  }
-  if (/\bno regulators\b|\bavoid regulators\b|\bno regulatory\b/.test(lower)) {
-    addExplicit("Avoid regulator mentions; use internal control language instead.", 0.78, "Prompt downplays regulators.");
-  }
-  if (/\bno guaranteed\b|\bno guarantees\b|\bnot guaranteed\b|\bno commitments\b/.test(lower)) {
-    addExplicit("Avoid commitments/guarantees/deterministic language.", 0.9, "Prompt forbids deterministic commitments.");
-  }
-  if (/\btone\b.*(analytical|executive|leadership)/.test(lower)) {
-    addExplicit("Tone split: analytical/crisp vs. leadership/reassuring.", 0.8, "Prompt requests tone split.");
-  }
-
-  if (/\bper\s+cent\b|percent\b/.test(lower)) {
-    addExplicit("Avoid percentages unless unavoidable; prefer qualitative statements.", 0.76, "Prompt hints at % usage.");
-  }
-  if (/\bformula\b|\bmath\b|\bequals\b/.test(lower)) {
-    addExplicit("Avoid formulas/math expressions; keep qualitative.", 0.74, "Prompt hints at formulas.");
-  }
-
-  if (/\broot cause\b/.test(lower) || /\bfour\b|\b4\b/.test(lower)) {
-    structureSchema.authoritativeSource = "prompt-latest";
-    structureSchema.requiredSections = [...CANONICAL_SECTIONS];
-    structureSchema.orderEnforced = true;
-  }
-
-  if (/\bfindings\b|\bexec note\b|\bexec summary\b/i.test(lower)) {
-    contradictions.push({
-      text: "3-section hint conflicts with canonical 4-section schema; enforce canonical schema.",
-      confidence: 0.7,
-    });
-  }
-
-  if (/\bcontradiction\b|\bconflict\b|\bmutually exclusive\b/.test(lower)) {
-    addInferred("Surface contradictions explicitly and resolve in favor of latest explicit rule.", 0.7, "Prompt references contradictions.");
-  }
-
-  if (/\bcall out missing\b|\bif missing\b|\bif unclear\b|\bif vague\b|\blacking details\b/.test(lower)) {
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     addInferred("Flag missing information explicitly; do not invent details.", 0.82, "Prompt references missing info.");
     conditionalLanguage.push({
       text: "If inputs are unclear, flag missing info instead of guessing.",
@@ -506,15 +374,11 @@ function parseGovernanceEnvelope(rawInputText) {
     });
   }
 
-<<<<<<< HEAD
   const missingInformation =
     !hardResetRules &&
     (/\bcall out missing\b|\bif missing\b|\bmissing info\b|\bmissing information\b(?!\s*section)|\bvague\b|\bunclear\b|\binsufficient detail\b/.test(
       lower
     ));
-=======
-  const missingInformation = /\bmissing\b|\bvague\b|\bunclear\b|\binsufficient detail\b/.test(lower);
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 
   if (missingInformation && !conditionalLanguage.length) {
     conditionalLanguage.push({
@@ -544,11 +408,8 @@ function parseGovernanceEnvelope(rawInputText) {
     conditionalLanguage,
     missingInformation,
     decoyInstruction,
-<<<<<<< HEAD
     hardResetRules,
     requiresGovernedOutput,
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   };
 }
 
@@ -1448,216 +1309,6 @@ function detectGovernanceViolations(text, { cycle } = {}) {
   };
 }
 
-function detectGovernanceViolations(text) {
-  const body = text || "";
-  const lower = body.toLowerCase();
-  const sections = extractSections(body);
-  const boundaries = getSectionBoundaries(body);
-
-  const hits = [];
-  const riskyTokens = new Set();
-  let structureOk = true;
-
-  function findSectionForIndex(idx) {
-    for (const b of boundaries) {
-      if (idx >= b.index && idx <= b.end) return b.name;
-    }
-    return null;
-  }
-
-  function addHit({ matchIndex = 0, snippet, severity = "hard", section, confidence = 0.78 }) {
-    const resolvedSection =
-      section || findSectionForIndex(matchIndex) || "global";
-    const cleanedSnippet = (snippet || "").toString().slice(0, 200);
-    hits.push({
-      section: resolvedSection,
-      snippet: cleanedSnippet,
-      severity,
-      confidence,
-    });
-  }
-
-  // Structure enforcement
-  CANONICAL_SECTIONS.forEach((section) => {
-    if (!sections[section]) {
-      structureOk = false;
-      addHit({
-        snippet: `Missing required section: ${section}`,
-        severity: "hard",
-        confidence: 0.88,
-      });
-    }
-  });
-
-  const extraHeading = body.match(
-    /(?:^|\n)\s*([A-Z][A-Za-z\s]+):\s*$/m
-  );
-  if (extraHeading && !CANONICAL_SECTIONS.includes(extraHeading[1])) {
-    structureOk = false;
-    addHit({
-      snippet: `Extra section detected: ${extraHeading[1]}`,
-      severity: "hard",
-      confidence: 0.72,
-    });
-  }
-
-  // Hard rules: commitments/deterministic
-  const commitmentRegex = new RegExp(COMMITMENT_REGEX.source, "gi");
-  let m;
-  while ((m = commitmentRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Deterministic/commitment phrase "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.86,
-    });
-  }
-
-  const rolesRegex = new RegExp(ROLES_REGEX.source, "gi");
-  while ((m = rolesRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Role/department mention "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.83,
-    });
-  }
-
-  const regRegex = new RegExp(REGULATORY_REGEX.source, "gi");
-  while ((m = regRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Regulatory-adjacent phrase "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.8,
-    });
-  }
-
-  const formulaRegex = new RegExp(FORMULA_REGEX.source, "gi");
-  while ((m = formulaRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Formula/numeric expression "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.8,
-    });
-  }
-
-  const proseFormulaRegex = new RegExp(PROSE_FORMULA_REGEX.source, "gi");
-  while ((m = proseFormulaRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Formula-as-prose expression "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.78,
-    });
-  }
-
-  const spelledPercentRegex = new RegExp(SPELLED_PERCENT_REGEX.source, "gi");
-  while ((m = spelledPercentRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Spelled-out percentage "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.8,
-    });
-  }
-
-  const deterministicNumericRegex = new RegExp(
-    DETERMINISTIC_NUMERIC_REGEX.source,
-    "gi"
-  );
-  while ((m = deterministicNumericRegex.exec(body)) !== null) {
-    riskyTokens.add(m[0].toLowerCase());
-    addHit({
-      matchIndex: m.index,
-      snippet: `Deterministic numeric "${m[0]}"`,
-      severity: "hard",
-      confidence: 0.82,
-    });
-  }
-
-  REAL_INSTITUTIONS.forEach((inst) => {
-    if (lower.includes(inst)) {
-      riskyTokens.add(inst);
-      addHit({
-        snippet: `Real institution reference "${inst}"`,
-        severity: "hard",
-        confidence: 0.76,
-      });
-    }
-  });
-
-  // Tone & near-violations
-  const leadership = sections["Leadership Summary"] || "";
-  if (leadership) {
-    const leadershipDeterministic = leadership.match(/\b(ensure|guarantee|will|commit)\b/i);
-    if (leadershipDeterministic) {
-      riskyTokens.add(leadershipDeterministic[0].toLowerCase());
-      addHit({
-        snippet: `Leadership deterministic verb "${leadershipDeterministic[0]}"`,
-        section: "Leadership Summary",
-        severity: "hard",
-        confidence: 0.82,
-      });
-    }
-  }
-
-  const analyticalSections = [
-    sections["Root Cause"],
-    sections["Remediation"],
-    sections["Governance Enhancement"],
-  ].filter(Boolean);
-  analyticalSections.forEach((sectionText, idx) => {
-    const hasHedging = /\b(may|could|might|aim|plan|intend|designed to|approximate|subject to validation)\b/i.test(
-      sectionText
-    );
-    if (!hasHedging && sectionText.trim().length > 0) {
-      addHit({
-        snippet: `Analytical section ${idx + 1} lacks hedging language.`,
-        section: idx === 0 ? "Root Cause" : idx === 1 ? "Remediation" : "Governance Enhancement",
-        severity: "warning",
-        confidence: 0.65,
-      });
-    }
-  });
-
-  const forbiddenHits = hits
-    .filter((h) => h.severity === "hard")
-    .map((h) => h.snippet);
-
-  const impliedReliabilityOk =
-    forbiddenHits.filter((h) =>
-      /deterministic|numeric|%|per\s+cent|guarantee|ensure|will|commit|expected/i.test(h)
-    ).length === 0;
-
-  const hardCount = hits.filter((h) => h.severity === "hard").length;
-  const warningCount = hits.filter((h) => h.severity === "warning").length;
-  const precisionScore = Math.max(
-    0,
-    Number((1 - hardCount * 0.12 - warningCount * 0.05).toFixed(2))
-  );
-
-  return {
-    forbiddenHits,
-    wordCountOk: true,
-    artifactsOk: structureOk,
-    impliedReliabilityOk,
-    isCompliant: structureOk && hardCount === 0,
-    detailedHits: hits,
-    precisionScore,
-    hardViolationCount: hardCount,
-    warningCount,
-    riskyTokens: [...riskyTokens],
-  };
-}
-
 // --- Rules parser ------------------------------------------------------------
 
 function parseRulesFromGoal(goalText) {
@@ -1713,15 +1364,9 @@ function waitForUserClarification(socket, { cycle }) {
 //
 // Confidence tiers for inferred constraints:
 //
-<<<<<<< HEAD
 // high   -> auto-apply as system-generated rule
 // medium -> ask user clarification, then add as user-authorized rule
 // low    -> discard but record in ledger
-=======
-// high   → auto-apply as system-generated rule
-// medium → ask user clarification, then add as user-authorized rule
-// low    → discard but record in ledger
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 // -----------------------------------------------------------------------------
 
 function classifyConfidenceTier(score) {
@@ -1742,72 +1387,7 @@ function applyInferredConstraints({
   socket,
   cycle,
 }) {
-<<<<<<< HEAD
   return [];
-=======
-  const mediumCandidates = [];
-  const list = Array.isArray(candidates) ? candidates : [];
-
-  list.forEach((c) => {
-    const text = (c.text || "").trim();
-    if (!text) return;
-
-    const confidence =
-      typeof c.confidence === "number" ? c.confidence : Number(c.score) || 0;
-    const tier = classifyConfidenceTier(confidence);
-
-    if (tier === "high") {
-      // Auto-apply as system-generated rule
-      const ruleObj = {
-        text,
-        origin: "system", // shows as system rule (blue) in UI
-        status: "pending",
-      };
-      rules.push(ruleObj);
-
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "MetaGovernance",
-        cycle,
-        summary: `High-confidence inferred constraint added and enforced from next cycle (confidence ${confidence.toFixed(
-          2
-        )}).`,
-        snippet: text.slice(0, 260),
-      });
-
-      // Push updated rules to UI immediately
-      socket.emit("telemetry", {
-        type: "governance-rules",
-        rules,
-      });
-    } else if (tier === "medium") {
-      mediumCandidates.push({ text, confidence });
-
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "MetaGovernance",
-        cycle,
-        summary: `Medium-confidence inferred constraint identified; may be escalated to user clarification (confidence ${confidence.toFixed(
-          2
-        )}).`,
-        snippet: text.slice(0, 260),
-      });
-    } else {
-      // low confidence → discard
-      ledger.push({
-        timestamp: new Date().toISOString(),
-        stage: "MetaGovernance",
-        cycle,
-        summary: `Low-confidence inferred constraint discarded (confidence ${confidence.toFixed(
-          2
-        )}).`,
-        snippet: text.slice(0, 260),
-      });
-    }
-  });
-
-  return mediumCandidates;
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 }
 
 // --- Unresolved-conflict synthesis helper -----------------------------------
@@ -1895,10 +1475,7 @@ async function runGovernedWorkflow(
     baseLedger = [],
     governanceEnvelope,
     confidenceScore,
-<<<<<<< HEAD
     requiresGovernedOutput = false,
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   }
 ) {
   // Ledger reference for logging before normalization
@@ -2322,19 +1899,6 @@ Behaviors:
   const cycleCapEnabled = strictnessEnabled && userCap !== null;
   const gilActive = mode === "real" || (!cycleCapEnabled && userCap === null);
 
-  // GIL-Lite semantics:
-  // - If maxCycles is null/undefined → GIL-Lite controls cycles (up to HARD_MAX_CYCLES)
-  // - If maxCycles is a number → treat as a HARD user cap (1–10) that we never exceed
-  let userCap = null;
-  if (maxCycles !== null && maxCycles !== undefined) {
-    const n = Number(maxCycles);
-    if (Number.isFinite(n) && n > 0) {
-      userCap = normalizeMaxCycles(n);
-    }
-  }
-
-  const gilActive = mode === "real" || userCap === null;
-
   // Reset panels (logs, ledger, rule statuses), but keep chat history.
   socket.emit("telemetry", { type: "reset" });
 
@@ -2343,7 +1907,6 @@ Behaviors:
     type: "gil-state",
     active: gilActive,
   });
-<<<<<<< HEAD
 
   // Build rule objects with origin metadata (for UI colors).
   const hasInjectedRules = Array.isArray(injectedRules) && injectedRules.length > 0;
@@ -2517,158 +2080,6 @@ Behaviors:
       snippet: "",
     });
   }
-=======
-
-  // Build rule objects with origin metadata (for UI colors).
-  const baseRules = Array.isArray(injectedRules)
-    ? injectedRules
-    : parseRulesFromGoal(goal || "").map((t) => ({
-        text: t,
-        origin: "user",
-        status: "pending",
-      }));
-  let rules = baseRules.map((r) =>
-    typeof r === "string"
-      ? { text: r, origin: "user", status: "pending" }
-      : { ...r, text: r.text || "" }
-  );
-
-  // PCGP: derive governance envelope and freeze it for this run
-  const envelope = governanceEnvelope || parseGovernanceEnvelope(input);
-  const pcgpRules = [];
-  (envelope.explicitRules || []).forEach((t) => {
-    const normalized = normalizeRuleObject(t);
-    pcgpRules.push({
-      text: normalized.text,
-      origin: "user",
-      status: "pending",
-      rationale: normalized.rationale,
-      confidence: normalized.confidence,
-    });
-  });
-  (envelope.inferredRules || []).forEach((t) => {
-    const normalized = normalizeRuleObject(t);
-    pcgpRules.push({
-      text: normalized.text,
-      origin: "user",
-      status: "pending",
-      rationale: normalized.rationale,
-      confidence: normalized.confidence,
-    });
-  });
-
-  // Inject structural/tone/forbidden constraints as rules for enforcement
-  if (envelope.structureSchema?.requiredSections?.length) {
-    pcgpRules.push({
-      text: `Include sections in order: ${envelope.structureSchema.requiredSections.join(
-        " > "
-      )}`,
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.toneSchema?.analyticalTone) {
-    pcgpRules.push({
-      text: "Maintain analytical tone except where plain language summary is requested.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.toneSchema?.executiveSummaryPlainLanguage) {
-    pcgpRules.push({
-      text: "Executive/leadership summary must be in plain language, no jargon.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.safetyBoundaries?.noSpeculation) {
-    pcgpRules.push({
-      text: "Do not speculate; flag missing information instead of guessing.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.safetyBoundaries?.noLegalConclusions) {
-    pcgpRules.push({
-      text: "Avoid legal conclusions; do not imply regulatory violations.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.safetyBoundaries?.conditionalLanguageOnly) {
-    pcgpRules.push({
-      text: "Use conditional language (may, could, likely); avoid absolutes.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.forbiddenContent?.percentages) {
-    pcgpRules.push({
-      text: "Do not include percentages.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.forbiddenContent?.mathFormulas) {
-    pcgpRules.push({
-      text: "Do not include math formulas.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.forbiddenContent?.roles) {
-    pcgpRules.push({
-      text: "Do not reference roles, departments, teams, committees, or boards.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.forbiddenContent?.realInstitutions) {
-    pcgpRules.push({
-      text: "Do not reference real institutions, standards bodies, governments, or countries.",
-      origin: "user",
-      status: "pending",
-    });
-  }
-  if (envelope.conditionalLanguage?.length) {
-    envelope.conditionalLanguage.forEach((c) =>
-      pcgpRules.push({
-        text: c.text || "Flag unclear inputs; use conditional language.",
-        origin: "system",
-        status: "pending",
-        confidence: c.confidence || 0.7,
-      })
-    );
-  }
-  if (envelope.missingInformation) {
-    pcgpRules.push({
-      text: "Flag missing information explicitly; do not guess.",
-      origin: "system",
-      status: "pending",
-    });
-  }
-  if (envelope.decoyInstruction?.length) {
-    envelope.decoyInstruction.forEach((d) =>
-      pcgpRules.push({
-        text: d.text,
-        origin: "system",
-        status: "decoy",
-        confidence: d.confidence || 0.7,
-      })
-    );
-  }
-
-  rules = [...rules, ...pcgpRules];
-
-  // Initialize ledger with any pre-existing governance entries (normalized)
-  let ledger = Array.isArray(baseLedger)
-    ? baseLedger.map((entry) => ({
-        cycle: entry.cycle ?? 0,
-        stage: entry.stage || "Governance",
-        ...entry,
-      }))
-    : [];
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   if (Array.isArray(envelope.metaWarnings) && envelope.metaWarnings.length) {
     envelope.metaWarnings.forEach((w) =>
       ledger.push({
@@ -2686,7 +2097,6 @@ Behaviors:
     timestamp: new Date().toISOString(),
     stage: "MCP - PCGP",
     cycle: 0,
-<<<<<<< HEAD
     summary: `Governance Envelope initialized via API with ${state.explicitRules.length} explicit rules, ${candidateInferredRules.length} inferred candidates.`,
     snippet: `Sections: ${
       state.explicitRules
@@ -2764,23 +2174,10 @@ Behaviors:
       const taskPreview = String(input || "").replace(/\s+/g, " ").slice(0, 160);
       const suggestionText =
         drift.driftDetected && (drift.rulesToSuggestClearing || []).length > 0
-=======
-    summary: `Governance Envelope initialized with ${envelope.explicitRules.length} explicit rules, ${envelope.inferredRules.length} inferred rules.`,
-    snippet: `Sections: ${envelope.structureSchema.requiredSections.join(", ") || "none"}`,
-  });
-
-  // Context drift detection before cycles (skip when no rules exist)
-  if (rules.length > 0) {
-    const drift = await checkContextDrift(input, rules);
-    if (drift?.driftDetected) {
-      const suggestionText =
-        (drift.rulesToSuggestClearing || []).length > 0
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
           ? `Suggested rules to clear: ${drift.rulesToSuggestClearing
               .map((i) => `Rule ${i + 1}`)
               .join(", ")}.`
           : "";
-<<<<<<< HEAD
       const msg = drift.driftDetected
         ? `This task appears unrelated to your current governance rules (task: "${taskPreview}", similarity ${
             drift.similarity !== null && drift.similarity !== undefined
@@ -2793,16 +2190,12 @@ Behaviors:
               : "n/a"
           }, threshold ${drift.threshold ?? 0.6}).`;
 
-=======
-      const msg = `This task appears unrelated to your current governance rules. Would you like to clear them? ${suggestionText}`;
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       ledger.push({
         timestamp: new Date().toISOString(),
         stage: "ContextDrift",
         cycle: 0,
         summary: msg,
         snippet: drift.explanation || "",
-<<<<<<< HEAD
         trigger: "semantic",
         similarity: drift.similarity ?? null,
         threshold: drift.threshold ?? 0.6,
@@ -2830,33 +2223,13 @@ Behaviors:
       threshold: null,
       rulesCount: rules.length,
     });
-=======
-      });
-      const narrative = await generateGovernanceNarrative({
-        summary: msg,
-        explanation: drift.explanation,
-        confidence: drift.confidence,
-      });
-      socket.emit("telemetry", {
-        type: "final-output",
-        text: narrative || msg,
-        narrative: narrative || msg,
-      });
-      socket.emit("telemetry", { type: "ledger", entries: ledger });
-      return;
-    }
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   }
 
   // Track stubborn violations across cycles for unresolved-conflict surfacing
   const stubbornViolations = [];
 
   // Mode-specific knobs
-<<<<<<< HEAD
   let plannedCycles = cycleCapEnabled && userCap != null ? userCap : HARD_MAX_CYCLES;
-=======
-  const plannedCycles = userCap != null ? userCap : HARD_MAX_CYCLES;
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   let minCycles = 1;
   const cyclePlanReason = cycleCapEnabled ? "user-cap (strictness on)" : "failsafe (strictness off)";
 
@@ -2872,11 +2245,7 @@ Behaviors:
 
   if (mode === "real") {
     // REAL mode: require at least 2 cycles only when user did not set a 1-cycle cap.
-<<<<<<< HEAD
     if (cycleCapEnabled && userCap === 1) {
-=======
-    if (userCap === 1) {
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       minCycles = 1;
     } else {
       minCycles = Math.min(2, plannedCycles);
@@ -2972,11 +2341,7 @@ Behaviors:
       cycle,
     });
 
-<<<<<<< HEAD
     if (cycle === 1 && requiresGovernedOutput) {
-=======
-    if (cycle === 1) {
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       currentText = applyCycleOneFilters(currentText);
     }
 
@@ -3071,11 +2436,7 @@ Behaviors:
 
       const question =
         moderatorResult.userQuestion ||
-<<<<<<< HEAD
         "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1-2 sentences.";
-=======
-        "The MCP needs a brief clarification to choose between competing interpretations of your request. Please restate what you want in 1–2 sentences.";
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       clarifications.push({
         cycle,
         status: "requested",
@@ -3209,41 +2570,6 @@ Behaviors:
     });
 
     const postCreativeModeratorResult = await moderatorPass(currentText, {
-<<<<<<< HEAD
-=======
-      input,
-      rules,
-      governanceStrictness: effectiveStrictness,
-      analyticalSummary: creativeResult.deltaSummary,
-      directives: analyticalResult.directives,
-      validation,
-      mediumCandidates: [],
-    });
-
-    ledger.push({
-      timestamp: new Date().toISOString(),
-      stage: "Moderator",
-      cycle,
-      summary: postCreativeModeratorResult.moderatorSummary,
-      snippet: currentText.slice(0, 260),
-    });
-
-    socket.emit("telemetry", {
-      type: "moderator-log",
-      message: `Cycle ${cycle} (post-creative): ${
-        postCreativeModeratorResult.moderatorSummary
-      } ${
-        typeof postCreativeModeratorResult.confidence === "number"
-          ? `(confidence ${postCreativeModeratorResult.confidence.toFixed(
-              2
-            )})`
-          : ""
-      }`.trim(),
-    });
-
-    // ---- Validator ---------------------------------------------------------
-    const postCreativeValidation = await validatorPass(currentText, {
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       input,
       rules,
       governanceStrictness: effectiveStrictness,
@@ -3351,12 +2677,9 @@ Behaviors:
       (t) => !previousRiskTokens.has(t)
     );
     previousRiskTokens = currentRiskTokens;
-<<<<<<< HEAD
     const userOverridePresent = rules.some(
       (r) => r.origin === "user-clarified"
     );
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 
     const canConverge =
       hardCount === 0 &&
@@ -3365,13 +2688,9 @@ Behaviors:
       cycle >= minCycles;
 
     const runaway =
-<<<<<<< HEAD
       !userOverridePresent &&
       stubbornViolations.length > 0 &&
       (stubbornViolations.length >= 5 || cycle === HARD_MAX_CYCLES);
-=======
-      stubbornViolations.length >= 5 || cycle === HARD_MAX_CYCLES;
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 
     if (canConverge) {
       converged = true;
@@ -3385,7 +2704,6 @@ Behaviors:
   }
 
   // --- Finalization + Unresolved Governance Conflicts surfacing -------------
-<<<<<<< HEAD
 
   let finalText = currentText;
   let narrative = null;
@@ -3447,17 +2765,6 @@ Behaviors:
         ...r,
         status: clarified ? "clarified" : finalRuleStatus,
       };
-=======
-
-  let finalText = currentText;
-
-  if (!converged && stubbornViolations.length > 0) {
-    const unresolvedSection = await synthesizeUnresolvedConflicts({
-      input,
-      rules,
-      stubbornViolations,
-      plannedCycles,
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     });
 
     // Build narrative only when governed output is explicitly required and run has concluded
@@ -3495,55 +2802,12 @@ Behaviors:
     });
   }
 
-<<<<<<< HEAD
   socket.emit("telemetry", { type: "ledger", entries: ledger });
   emitFinalOutputOnce(socket, state, finalText, narrative);
   } finally {
     state._inFlight = false;
     runGovernedWorkflow._inFlight = false;
   }
-=======
-  // Stamp final rule statuses for UI summary
-  const finalRuleStatus = validation.isCompliant ? "passed" : "failed";
-  const finalizedRules = rules.map((r) => {
-    // Keep explicit clarified status if origin indicates user clarification
-    const clarified =
-      r.origin === "user-clarified" || r.status === "clarified";
-    return {
-      ...r,
-      status: clarified ? "clarified" : finalRuleStatus,
-    };
-  });
-
-  const narrative = buildNarrativeReport({
-    input,
-    goal,
-    mode,
-    converged,
-    validation,
-    plannedCycles,
-    cyclesRun,
-    stubbornViolations,
-    clarifications,
-    rules: finalizedRules,
-    hitRunaway,
-  });
-
-  socket.emit("telemetry", {
-    type: "governance-rules-final",
-    rules: finalizedRules,
-  });
-  socket.emit("telemetry", {
-    type: "mcp-status",
-    status: "Finalized",
-    detail: converged
-      ? "Governed output locked after dual-hemisphere convergence and meta-governance decisions."
-      : "Locked after max cycles (fail-safe stop with surfaced governance conflicts where applicable).",
-  });
-
-  socket.emit("telemetry", { type: "ledger", entries: ledger });
-  socket.emit("telemetry", { type: "final-output", text: finalText, narrative });
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 }
 
 // --- Turbo workflow (ultra-fast, approximate governance) --------------------
@@ -3627,13 +2891,9 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
     status: r.origin === "user-clarified" ? "clarified" : "passed",
   }));
 
-<<<<<<< HEAD
   if (requiresGovernedOutput && turboFinalRules.length > 0) {
     socket.emit("telemetry", { type: "governance-rules-final", rules: turboFinalRules });
   }
-=======
-  socket.emit("telemetry", { type: "governance-rules-final", rules: turboFinalRules });
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   socket.emit("telemetry", {
     type: "mcp-status",
     status: "Finalized",
@@ -3647,7 +2907,6 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
     rules,
   });
 
-<<<<<<< HEAD
   const narrative =
     requiresGovernedOutput && turboFinalRules.length > 0
       ? buildNarrativeReport({
@@ -3666,23 +2925,6 @@ ${rules.map((r) => r.text || r).join("\n") || "None provided."}
       : null;
 
   emitFinalOutputOnce(socket, state, text, narrative);
-=======
-  const narrative = buildNarrativeReport({
-    input,
-    goal,
-    mode: "turbo",
-    converged: true,
-    validation: { ...initialValidationState(), isCompliant: true },
-    plannedCycles: 2,
-    cyclesRun: 1,
-    stubbornViolations: [],
-    clarifications: [],
-    rules: turboFinalRules,
-    hitRunaway: false,
-  });
-
-  socket.emit("telemetry", { type: "final-output", text, narrative });
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 }
 
 // --- Passes: Task Agent, Analytical, Moderator, Creative, Validator ----------
@@ -3735,11 +2977,7 @@ You are the ANALYTICAL hemisphere in the cd\\ai governed architecture.
 Your responsibilities:
 - Enforce governance constraints strictly,
 - Make minimal necessary edits to the draft,
-<<<<<<< HEAD
 - ${canonicalGuidance}
-=======
-- Enforce the canonical four-section schema (Root Cause, Remediation, Governance Enhancement, Leadership Summary) when not present,
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 - Strip commitments/guarantees/deterministic numerics (will/commit/ensure/guarantee, %, confidence claims),
 - Remove role/department/team/committee nouns and regulatory-adjacent phrasing; replace with neutral alternatives,
 - Use hedged modals ("aim to", "plan to", "intend to", "designed to") and qualitative statements ("approximate", "subject to validation") instead of deterministic promises,
@@ -4020,7 +3258,6 @@ Strictness coefficient: ${governanceStrictness.toFixed(2)}
   };
 }
 
-<<<<<<< HEAD
 async function validatorPass(
   text,
   { input, rules, governanceStrictness, cycle, requiresGovernedOutput = false }
@@ -4035,10 +3272,6 @@ async function validatorPass(
     };
   }
   const evaluation = detectGovernanceViolations(text, { cycle });
-=======
-async function validatorPass(text, { input, rules, governanceStrictness }) {
-  const evaluation = detectGovernanceViolations(text);
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   const base = initialValidationState();
   const merged = { ...base, ...evaluation };
   merged.isCompliant =
@@ -4046,7 +3279,6 @@ async function validatorPass(text, { input, rules, governanceStrictness }) {
     merged.impliedReliabilityOk &&
     (merged.forbiddenHits || []).length === 0 &&
     (merged.hardViolationCount || 0) === 0;
-<<<<<<< HEAD
   merged.overall_score =
     typeof evaluation.overall_score === "number"
       ? evaluation.overall_score
@@ -4068,8 +3300,6 @@ async function validatorPass(text, { input, rules, governanceStrictness }) {
     merged.narrative = null;
   }
 
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   return merged;
 }
 

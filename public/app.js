@@ -43,10 +43,7 @@ const modeRealBtn = document.getElementById("mode-real");
 const modeFastBtn = document.getElementById("mode-fast");
 const modeTurboBtn = document.getElementById("mode-turbo");
 const logoutButtonEl = document.getElementById("logout-button");
-<<<<<<< HEAD
 const clearRulesButtonEl = document.getElementById("clear-rules-button");
-=======
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 const gilIndicatorEl = document.getElementById("gil-indicator");
 
 // Status
@@ -146,16 +143,11 @@ function sendUserMessage(text) {
   appendUserMessage(text);
 
   pendingTaskText = text;
-<<<<<<< HEAD
   const isRuleMessage = /rule:|add rule|governance:|constraints:|the following rules/i.test(text);
   const mode = isRuleMessage ? "rules" : "task";
   socket.emit("run-workflow", {
     input: text,
     mode,
-=======
-  socket.emit("run-workflow", {
-    input: text,
->>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     goal: "", // rules are managed server-side
     maxCycles:
       Number(cycleSliderEl?.value || 0) === 0
