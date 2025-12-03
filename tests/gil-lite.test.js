@@ -36,6 +36,7 @@ global.fetch = async (_url, options = {}) => {
   const needsJson = body.response_format?.type === "json_object";
 
   let content;
+<<<<<<< HEAD
   if (sys.includes("Extract TASKS ONLY")) {
     return {
       ok: true,
@@ -54,6 +55,8 @@ global.fetch = async (_url, options = {}) => {
     };
   }
 
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   if (sys.includes("ANALYTICAL hemisphere")) {
     content = JSON.stringify({
       rewrittenText: "analytical",
@@ -109,8 +112,11 @@ async function testUserCapStopsAt3() {
     maxCycles: 3,
     governanceStrictness: 0.85,
     perfMode: "real",
+<<<<<<< HEAD
     rules: ["dummy rule"],
     requiresGovernedOutput: true,
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   });
 
   const cycles = socket.emitted.filter(
@@ -120,10 +126,15 @@ async function testUserCapStopsAt3() {
     (e) => e.event === "telemetry" && e.payload?.type === "cycle-plan"
   );
 
+<<<<<<< HEAD
   if (!plan) {
     console.warn("No cycle-plan emitted; skipping plannedCycles assertion (ungoverned path).");
   } else if (plan.payload?.plannedCycles > 3 || plan.payload?.plannedCycles < 1) {
     throw new Error("Expected plannedCycles between 1 and 3 when user cap is 3.");
+=======
+  if (!plan || plan.payload?.plannedCycles !== 3) {
+    throw new Error("Expected plannedCycles=3 when user cap is 3.");
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   }
 
   const maxSeenCycle = Math.max(...cycles.map((c) => c.payload.cycle));
@@ -141,16 +152,23 @@ async function testOpenCycleUsesHardMax() {
     maxCycles: null,
     governanceStrictness: 0.85,
     perfMode: "real",
+<<<<<<< HEAD
     rules: ["dummy rule"],
     requiresGovernedOutput: true,
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
   });
 
   const plan = socket.emitted.find(
     (e) => e.event === "telemetry" && e.payload?.type === "cycle-plan"
   );
+<<<<<<< HEAD
   if (!plan) {
     console.warn("No cycle-plan emitted; skipping plannedCycles assertion (ungoverned path).");
   } else if (plan.payload?.plannedCycles !== 25) {
+=======
+  if (!plan || plan.payload?.plannedCycles !== 25) {
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     throw new Error("Expected open-cycle plannedCycles to honor HARD_MAX_CYCLES=25.");
   }
 

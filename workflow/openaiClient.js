@@ -11,6 +11,7 @@ const client = apiKey
 const MAX_RETRIES = 6;
 const CLASSIFIER_MODEL = process.env.OPENAI_MODEL_CLASSIFIER || "gpt-4o-mini";
 const NARRATIVE_MODEL = process.env.OPENAI_MODEL_NARRATIVE || "gpt-4o-mini";
+<<<<<<< HEAD
 const EMBEDDING_MODEL =
   process.env.OPENAI_MODEL_EMBEDDING || CLASSIFIER_MODEL || "text-embedding-3-small";
 
@@ -23,6 +24,9 @@ function safeParseJsonContent(input) {
   }
 }
 
+=======
+
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 async function safeChatCompletion(args) {
   if (!client) {
     throw new Error("OpenAI client unavailable (missing API key).");
@@ -90,7 +94,11 @@ async function classifyGovernanceIntent(message) {
       {
         role: "system",
         content:
+<<<<<<< HEAD
           "Classify the user message for governed AI rule management. Return JSON with keys: label (one of rule_addition, rule_removal, rule_clear, rule_modify, rule_query, task, mixed, ambiguous, narrative_request), confidence (0-1), ruleCandidates (array of strings), task (string or null). Do not include any other keys.\nIf you are unsure, default to \"task\".\nOnly classify something as rules if explicit governance markers are present (rule:, add rule, governance:, constraints:).\nNever infer rules from conversational or task phrasing.\nReturn \"mixed\" ONLY if both a governance marker (e.g., rule:) and a task verb appear in the same message.",
+=======
+          "Classify the user message for governed AI rule management. Return JSON with keys: label (one of rule_addition, rule_removal, rule_clear, rule_modify, rule_query, task, mixed, ambiguous, narrative_request), confidence (0-1), ruleCandidates (array of strings), task (string or null). Do not include any other keys.",
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
       },
       { role: "user", content: message },
     ],
@@ -99,6 +107,7 @@ async function classifyGovernanceIntent(message) {
   });
 
   try {
+<<<<<<< HEAD
     let content = res.choices[0].message.content;
     let parsed = safeParseJsonContent(content);
     if (!parsed.ok) {
@@ -122,6 +131,14 @@ async function classifyGovernanceIntent(message) {
       confidence: typeof parsedValue.confidence === "number" ? parsedValue.confidence : 0.5,
       ruleCandidates: Array.isArray(parsedValue.ruleCandidates) ? parsedValue.ruleCandidates : [],
       task: parsedValue.task || null,
+=======
+    const parsed = JSON.parse(res.choices[0].message.content);
+    return {
+      label: parsed.label || "task",
+      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
+      ruleCandidates: Array.isArray(parsed.ruleCandidates) ? parsed.ruleCandidates : [],
+      task: parsed.task || null,
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     };
   } catch (err) {
     return {
@@ -139,6 +156,7 @@ async function extractRules(message) {
 }
 
 async function checkContextDrift(task, rules) {
+<<<<<<< HEAD
   if (!rules || rules.length === 0) {
     return {
       driftDetected: false,
@@ -170,11 +188,16 @@ async function checkContextDrift(task, rules) {
   if (!client) {
     const driftDetected = (task || "").toLowerCase().includes("unrelated");
     const similarity = driftDetected ? 0.4 : 0.7;
+=======
+  if (!client) {
+    const driftDetected = (task || "").toLowerCase().includes("unrelated");
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
     return {
       driftDetected,
       rulesToSuggestClearing: driftDetected ? [0] : [],
       explanation: driftDetected ? "Heuristic drift detected (offline mode)." : "",
       confidence: 0.6,
+<<<<<<< HEAD
       similarity,
       threshold: 0.6,
     };
@@ -225,6 +248,48 @@ async function checkContextDrift(task, rules) {
     similarity: null,
     threshold: 0.6,
   };
+=======
+    };
+  }
+
+  const res = await safeChatCompletion({
+    model: CLASSIFIER_MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          "Assess whether the incoming task conflicts with or is unrelated to current governance rules. Return JSON with driftDetected (boolean), rulesToSuggestClearing (array of indices), explanation (short), confidence (0-1).",
+      },
+      {
+        role: "user",
+        content: `Task:\n${task}\nRules:\n${(rules || [])
+          .map((r, i) => `${i + 1}. ${r.text || r}`)
+          .join("\n")}`,
+      },
+    ],
+    temperature: 0,
+    response_format: { type: "json_object" },
+  });
+
+  try {
+    const parsed = JSON.parse(res.choices[0].message.content);
+    return {
+      driftDetected: !!parsed.driftDetected,
+      rulesToSuggestClearing: Array.isArray(parsed.rulesToSuggestClearing)
+        ? parsed.rulesToSuggestClearing
+        : [],
+      explanation: parsed.explanation || "",
+      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
+    };
+  } catch (err) {
+    return {
+      driftDetected: false,
+      rulesToSuggestClearing: [],
+      explanation: "",
+      confidence: 0.4,
+    };
+  }
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 }
 
 async function generateGovernanceNarrative(context) {
@@ -255,6 +320,7 @@ async function generateGovernanceNarrative(context) {
   return text.trim();
 }
 
+<<<<<<< HEAD
 // Explicit rule extraction via OpenAI (replaces local parsing)
 async function extractExplicitRulesViaAPI(rulesText, { strictness = 2 } = {}) {
   if (!client) return { explicit_rules: [], parse_error: false };
@@ -378,6 +444,8 @@ If no reasonable inference exists, return an empty array.
   }
 }
 
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 function computeConfidenceScore({ structured = false, messy = false, commandOnly = false }) {
   if (commandOnly) return null;
   if (structured) return 0.95;
@@ -385,6 +453,7 @@ function computeConfidenceScore({ structured = false, messy = false, commandOnly
   return 0.8;
 }
 
+<<<<<<< HEAD
 function cosineSimilarity(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length === 0 || b.length === 0) {
     return 0;
@@ -404,6 +473,8 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 module.exports = {
   safeChatCompletion,
   classifyGovernanceIntent,
@@ -411,7 +482,10 @@ module.exports = {
   checkContextDrift,
   generateGovernanceNarrative,
   computeConfidenceScore,
+<<<<<<< HEAD
   cosineSimilarity,
   extractExplicitRulesViaAPI,
   inferRulesViaAPI,
+=======
+>>>>>>> 03c6e8d6a01c6abed84f6cc74e57c8183601a2a3
 };
