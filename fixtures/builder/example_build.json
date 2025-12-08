@@ -1,0 +1,14 @@
+﻿{
+  "build_id": "example_001",
+  "inputs": {
+    "fkf_scope": "acquisition-policy",
+    "jurisdiction": "us",
+    "constraints": ["c1", "c7", "c12"]
+  },
+  "semantic_graph": {
+    "nodes": ["c1","c7","c12"],
+    "edges": [["c1","c7"],["c7","c12"]]
+  },
+  "strictness": 0.6,
+  "hash": "SHA256(example_build@canonical)"
+}

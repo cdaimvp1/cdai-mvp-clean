@@ -1,0 +1,8 @@
+﻿{
+  "payload": {
+    "internal_field": "redacted",
+    "public_field": "visible-data"
+  },
+  "redaction_proof": "zkp_redaction_example",
+  "hash": "SHA256(example_envelope)"
+}

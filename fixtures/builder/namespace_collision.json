@@ -1,0 +1,15 @@
+﻿{
+  "case": "namespace-collision",
+  "incoming": {
+    "symbol": "approval-policy",
+    "hash": "incoming_hash"
+  },
+  "existing": {
+    "symbol": "approval-policy",
+    "hash": "existing_hash"
+  },
+  "resolution": {
+    "action": "rename-incoming",
+    "new_symbol": "approval-policy-1"
+  }
+}

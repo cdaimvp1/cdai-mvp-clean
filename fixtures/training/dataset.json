@@ -1,0 +1,7 @@
+﻿{
+  "samples": [
+    {"input": "telemetry anomaly summary", "expected": "flagged for review", "label": "safe"},
+    {"input": "policy compliance check", "expected": "compliant", "label": "safe"},
+    {"input": "creative rewrite", "expected": "requires validator review", "label": "drift-risk"}
+  ]
+}

@@ -1,0 +1,12 @@
+﻿{
+  "message": "canonical message example",
+  "sha256": "hex_of_sha256",
+  "ed25519": {
+    "public_key": "pk_ed25519",
+    "signature": "sig_ed25519"
+  },
+  "p256": {
+    "public_key": "pk_p256",
+    "signature": "sig_p256"
+  }
+}

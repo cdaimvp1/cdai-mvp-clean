@@ -1,0 +1,58 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --background: #0f0f0f;
+  --foreground: #e0e0e0;
+  --card: #171717;
+  --card-foreground: #e0e0e0;
+  --popover: #171717;
+  --popover-foreground: #e0e0e0;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --secondary: #171717;
+  --secondary-foreground: #e0e0e0;
+  --muted: #171717;
+  --muted-foreground: #a1a1a1;
+  --accent: #171717;
+  --accent-foreground: #e0e0e0;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #171717;
+  --input-background: #111111;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #2d2d2d;
+  --chart-1: #3b82f6;
+  --chart-2: #14b8a6;
+  --chart-3: #a855f7;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --radius: 0.625rem;
+  --sidebar: #171717;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #007aff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #262626;
+  --sidebar-ring: #2d2d2d;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring), transparent 50%);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}

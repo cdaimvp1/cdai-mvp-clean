@@ -1,0 +1,12 @@
+﻿{
+  "fkf_scope": "global-procurement",
+  "jurisdiction": "eu",
+  "badges": ["safety","policy"],
+  "edges": [
+    {"from":"eu-policy","to":"gdpr"},
+    {"from":"gdpr","to":"retention"}
+  ],
+  "constraints": ["eu-policy","gdpr","retention"],
+  "signature": "sig_eu_cluster",
+  "hash": "SHA256(federated_build)"
+}

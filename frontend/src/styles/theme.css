@@ -1,0 +1,17 @@
+:root {
+  --cdai-bg-topbar: #000000;
+  --cdai-bg-sidebar: #0b0b0b;
+  --cdai-bg-chatHistory: #1a1a1a;
+  --cdai-bg-footer: #000000;
+  --cdai-bg-loginFooter: #000000;
+
+  --cdai-bg-input: #000000;
+  --cdai-bg-messages: #000000;
+
+  --cdai-bg-body: #111111;
+
+  --cdai-text-primary: #e0e0e0;
+  --cdai-accent: #1e7cff;
+
+  --cdai-border: #1b1b1b;
+}

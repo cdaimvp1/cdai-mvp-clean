@@ -1,0 +1,38 @@
+import React from "react";
+import { getParticipantColor, systemColor, assistantColor } from "../../utils/chatColors";
+import classNames from "../../utils/classNames";
+import formatTimestamp from "../../utils/formatTimestamp";
+
+export default function ChatMessagesList({ messages }) {
+  return (
+    <div className="chat-messages">
+      {messages.map((msg) => {
+        const isUser = msg.role === "user";
+        const isSystem = msg.role === "system";
+        const isAssistant = msg.role === "assistant";
+        const bubbleClass = classNames(
+          "chat-message rounded-cdai",
+          isUser ? "user" : isSystem ? "system" : "other",
+          "text-cdai-text"
+        );
+        let style = {};
+        if (!isUser && !isSystem) {
+          style = { background: getParticipantColor(msg.author || msg.role), color: "#0b1220" };
+        } else if (isAssistant) {
+          style = { background: assistantColor, color: "#e2e8f0" };
+        } else if (isSystem) {
+          style = { background: systemColor, color: "#cbd5e1" };
+        }
+        return (
+          <div key={msg.id} className={bubbleClass} style={style}>
+            <div style={{ marginBottom: 4, fontSize: 12, opacity: 0.8 }}>
+              {msg.author || msg.role} • {formatTimestamp(msg.timestamp || Date.now())}
+            </div>
+            {msg.text}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+

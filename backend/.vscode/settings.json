@@ -1,0 +1,4 @@
+{
+    "appService.showBuildDuringDeployPrompt": false,
+    "git.ignoreLimitWarning": true
+}

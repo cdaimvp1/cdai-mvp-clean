@@ -1,0 +1,10 @@
+﻿{
+  "ref_output": "The approved vendor list follows policy set X.",
+  "model_output": "Vendors are mostly aligned with policy set X.",
+  "D": 0.27,
+  "thresholds": {
+    "tau_ok": 0.20,
+    "tau_warn": 0.35
+  },
+  "status": "WARN"
+}

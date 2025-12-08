@@ -1,0 +1,7 @@
+﻿{
+  "seed": "canonical-seed",
+  "deltas": ["d1","d2","d3"],
+  "hash": "SHA256(seed||deltas)",
+  "expected_output_hash": "SHA256(final_output)",
+  "language_equivalence_required": true
+}

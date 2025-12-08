@@ -1,0 +1,14 @@
+[
+  {
+    "id": "RULE-DB-1",
+    "description": "Never migrate production data without a validated rollback plan.",
+    "effect": "hard_block",
+    "origin": "policy"
+  },
+  {
+    "id": "RULE-DB-2",
+    "description": "Surface any lineage or PHI risks to governance moderators.",
+    "effect": "notice",
+    "origin": "policy"
+  }
+]

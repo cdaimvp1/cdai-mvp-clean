@@ -1,0 +1,30 @@
+{
+  "name": "cdai-mvp-dev",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/gil-lite.test.js && node tests/narrative.test.js && node tests/conversational-governance.test.js && node tests/conversational-governance-extended.test.js && node tests/priority1.test.js && node tests/governanceClassifier.test.js && node tests/deterministicRouting.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "axios-cookiejar-support": "^6.0.5",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "express-session": "^1.17.3",
+    "openai": "^6.9.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "tough-cookie": "^6.0.0",
+    "uuid": "^13.0.0"
+  }
+}

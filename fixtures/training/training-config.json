@@ -1,0 +1,5 @@
+﻿{
+  "min_confidence": "Conf_min (import from registry)",
+  "max_drift": "τ_warn (import from registry)",
+  "description": "Dummy governed training config used to test Volume 5 rules."
+}

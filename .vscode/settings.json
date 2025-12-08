@@ -1,0 +1,6 @@
+{
+    "appService.showBuildDuringDeployPrompt": false,
+    "appService.defaultWebAppToDeploy": "/subscriptions/2943bff0-4013-4e4b-b910-72b8ff2412cd/resourceGroups/cdai-mvp-rg/providers/Microsoft.Web/sites/cdai-mvp-web",
+    "appService.deploySubpath": ".",
+    "git.ignoreLimitWarning": true
+}
